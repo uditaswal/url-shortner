@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <%- include("partials/head", { title: "URL Shortener - Profile Stats" }) %>
+</head>
+
+<body>
+    <%- include("partials/header") %>
+
+    <main class="app-main">
+        <div class="container">
+            <h1>Profile & URL Stats</h1>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total URLs</div>
+                    <div class="stat-value"><%= stats.totalUrls %></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Clicks</div>
+                    <div class="stat-value"><%= stats.totalClicks %></div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active URLs</div>
+                    <div class="stat-value"><%= stats.activeUrls %></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <% if (locals.urls && locals.urls.length > 0) { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Short</th>
+                                <th>Original</th>
+                                <th>Clicks</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% locals.urls.forEach((el, index) => { %>
+                                <tr>
+                                    <td><%= index + 1 %></td>
+                                    <td><a href="/<%= el.shortId %>" target="_blank"><%= el.shortId %></a></td>
+                                    <td class="ellipsis-cell"><a href="<%= el.redirectUrl %>" target="_blank"><%= el.redirectUrl %></a></td>
+                                    <td><%= el.visitHistory ? el.visitHistory.length : 0 %></td>
+                                    <td><%= el.createdAt ? new Date(el.createdAt).toLocaleString() : "-" %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                <% } else { %>
+                    <p class="empty">You have not created any URLs yet.</p>
+                <% } %>
+            </div>
+        </div>
+    </main>
+
+    <%- include("partials/footer") %>
+</body>
+
+</html>

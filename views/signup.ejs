@@ -2,121 +2,44 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signup</title>
-
-    <style>
-        body {
-            font-family: system-ui, -apple-system, Segoe UI, Roboto;
-            background: #0f172a;
-            color: #e2e8f0;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 500px;
-            margin: auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .card {
-            background: #1e293b;
-            padding: 25px;
-            border-radius: 12px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 6px;
-            font-size: 14px;
-            color: #94a3b8;
-        }
-
-        input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 6px;
-            border: none;
-            outline: none;
-        }
-
-        input:focus {
-            box-shadow: 0 0 0 2px #38bdf8;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            background: #38bdf8;
-            color: black;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .footer {
-            text-align: center;
-            margin-top: 15px;
-            color: #94a3b8;
-        }
-
-        .footer a {
-            color: #38bdf8;
-            text-decoration: none;
-        }
-    </style>
+    <%- include("partials/head", { title: "URL Shortener - Signup" }) %>
 </head>
 
 <body>
+    <%- include("partials/header") %>
 
-    <div class="container">
-        <h1>Create Account</h1>
+    <main class="app-main">
+        <div class="narrow-container">
+            <h1>Create Account</h1>
 
-        <div class="card">
-            <form action="/user" method="POST">
+            <div class="card">
+                <form action="/user" method="POST">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" name="name" placeholder="John Doe" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" name="name" placeholder="John Doe" required>
-                </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" name="email" placeholder="john@example.com" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="email" placeholder="john@example.com" required>
-                </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" placeholder="********" required>
+                    </div>
 
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" placeholder="••••••••" required>
-                </div>
+                    <button class="full-button" type="submit">Sign Up</button>
+                </form>
+            </div>
 
-                <button type="submit">Sign Up</button>
-
-            </form>
+            <div class="auth-footer">
+                Already have an account? <a href="/login">Login</a>
+            </div>
         </div>
+    </main>
 
-        <div class="footer">
-            Already have an account? <a href="/login">Login</a>
-        </div>
-
-    </div>
-
+    <%- include("partials/footer") %>
 </body>
 
 </html>

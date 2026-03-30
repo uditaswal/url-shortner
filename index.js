@@ -8,7 +8,7 @@ import { logResAndRes } from './middleware/url.middleware.js'
 import path from 'path'
 import { fileURLToPath } from 'url';
 import cookieParser from 'cookie-parser';
-import { restrictToLogginUserOnly } from './middleware/auth.middleware.js';
+import { restrictToLogginUserOnly, checkAuth } from './middleware/auth.middleware.js';
 
 // current directory setup
 const __filename = fileURLToPath(import.meta.url);
@@ -24,11 +24,17 @@ const PORT = process.env.PORT || 8000;
 // server side rendering via ejs
 app.set("view engine", "ejs")
 app.set("views", path.join(__dirname, "views"))
+app.use(express.static(path.join(__dirname, "public")));
 
 // middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }))
 app.use(cookieParser());
+app.use(checkAuth);
+app.use((req, res, next) => {
+    res.locals.user = req.user || null;
+    next();
+});
 app.use(logResAndRes("log.txt"));
 
 
