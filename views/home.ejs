@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto;
+            background: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        input {
+            width: 70%;
+            padding: 10px;
+            border-radius: 6px;
+            border: none;
+            margin-right: 10px;
+        }
+
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 6px;
+            background: #38bdf8;
+            color: black;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #334155;
+        }
+
+        th {
+            text-align: left;
+            color: #94a3b8;
+        }
+
+        a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
+
+        .success {
+            background: #022c22;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .copy-btn {
+            margin-left: 10px;
+            background: #22c55e;
+        }
+
+        .empty {
+            text-align: center;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+
+        <h1> URL Shortener</h1>
+
+        <!--  Success Message -->
+        <% if (locals.url) { %>
+            <div class="success">
+                Short URL:
+                <a id="shortUrl" href="/<%= locals.url %>" target="_blank">
+                    <%= locals.url %>
+                </a>
+
+                <button class="copy-btn" onclick="copyUrl()">Copy</button>
+            </div>
+            <% } %>
+
+                <!--  Form -->
+                <div class="card">
+                    <form method="POST" action="/api" onsubmit="return validateForm()">
+                        <input type="text" name="url" id="urlInput" placeholder="https://example.com" required>
+                        <button type="submit">Generate</button>
+                    </form>
+                </div>
+
+                <!--  Table -->
+                <div class="card">
+                    <% if (locals.urls && locals.urls.length> 0) { %>
+
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Short</th>
+                                    <th>Original</th>
+                                    <th>Clicks</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                <% locals.urls.forEach((el, index)=> { %>
+                                    <tr>
+                                        <td>
+                                            <%= index + 1 %>
+                                        </td>
+
+                                        <td>
+                                            <a href="/<%= el.shortId %>" target="_blank">
+                                                <%= el.shortId %>
+                                            </a>
+                                        </td>
+
+                                        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis;">
+                                            <a href="<%= el.redirectUrl %>" target="_blank">
+                                                <%= el.redirectUrl %>
+                                            </a>
+                                        </td>
+
+                                        <td>
+                                            <%= el.visitHistory ? el.visitHistory.length : 0 %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+
+                        </table>
+
+                        <% } else { %>
+                            <p class="empty">No URLs created yet</p>
+                            <% } %>
+                </div>
+
+    </div>
+
+    <script>
+        function copyUrl() {
+            const text = document.getElementById("shortUrl").innerText;
+            navigator.clipboard.writeText(window.location.origin + "/" + text);
+            alert("Copied!");
+        }
+
+        function validateForm() {
+            const url = document.getElementById("urlInput").value;
+            try {
+                new URL(url);
+                return true;
+            } catch {
+                alert("Enter a valid URL (include https://)");
+                return false;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
