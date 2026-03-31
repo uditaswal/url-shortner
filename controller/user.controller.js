@@ -1,24 +1,113 @@
 import User from "../model/user.models.js";
-import { setUser, removeUser } from '../service/auth.service.js'
-export async function handleUserSignup(req, res) {
-    const { name, email, password } = req.body;
-    await User.create({
-        name,
-        email,
-        password
+import { setUser, removeUser } from '../util/auth.util.js'
+import {
+    isSafePlainInput,
+    isStrongPassword,
+    isValidUsername,
+    sanitizeTextInput,
+    normalizeUsername
+} from "../util/validation.util.js";
 
+const bcryptHashRegex = /^\$2[aby]\$\d{2}\$/;
+
+function renderSignup(res, values = {}, error = null) {
+    return res.status(400).render("signup", {
+        error,
+        values
+    });
+}
+
+function renderLogin(res, values = {}, error = null) {
+    return res.status(400).render("login", {
+        error,
+        values
+    });
+}
+
+export async function handleUserSignup(req, res) {
+    if (!isSafePlainInput(req.body.name) || !isSafePlainInput(req.body.username) || !isSafePlainInput(req.body.password)) {
+        return renderSignup(res, {}, "Invalid input format.");
+    }
+
+    const name = sanitizeTextInput(req.body.name);
+    const username = normalizeUsername(req.body.username);
+    const password = sanitizeTextInput(req.body.password);
+
+    if (!name) {
+        return renderSignup(res, { name, username }, "Name is required.");
+    }
+
+    if (!isValidUsername(username || "")) {
+        return renderSignup(
+            res,
+            { name, username },
+            "Username must be 3 to 20 characters and can contain lowercase letters, numbers, and underscores."
+        );
+    }
+
+    if (!isStrongPassword(password || "")) {
+        return renderSignup(
+            res,
+            { name, username },
+            "Password must be at least 8 characters and include uppercase, lowercase, and a number."
+        );
+    }
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+        return renderSignup(res, { name, username }, "This username is already taken.");
+    }
+
+    const user = await User.create({
+        name,
+        username,
+        password
     });
 
-    return res.render("home");
+    const token = setUser(user);
+    res.cookie("uid", token, { httpOnly: true });
+
+    return res.redirect("/");
 }
 
 export async function handleUserLogin(req, res) {
-    const { name, email, password } = req.body;
-    const user = await User.findOne({ email, password });
-    if (!user)
-        return res.render("login", {
-            error: "Invalid username or password"
-        })
+    if (!isSafePlainInput(req.body.username) || !isSafePlainInput(req.body.password)) {
+        return renderLogin(res, {}, "Invalid input format.");
+    }
+
+    const username = normalizeUsername(req.body.username);
+    const password = sanitizeTextInput(req.body.password);
+
+    if (!isValidUsername(username || "")) {
+        return renderLogin(
+            res,
+            { username },
+            "Enter a valid username using lowercase letters, numbers, or underscores."
+        );
+    }
+
+    if (!password) {
+        return renderLogin(res, { username }, "Password is required.");
+    }
+
+    const user = await User.findOne({ username });
+    if (!user) {
+        return renderLogin(res, { username }, "Invalid username or password.");
+    }
+
+    let isPasswordValid = false;
+
+    if (bcryptHashRegex.test(user.password)) {
+        isPasswordValid = await user.comparePassword(password);
+    } else if (user.password === password) {
+        user.password = password;
+        await user.save();
+        isPasswordValid = true;
+    }
+
+    if (!isPasswordValid) {
+        return renderLogin(res, { username }, "Invalid username or password.");
+    }
 
     const token = setUser(user);
     res.cookie("uid", token, { httpOnly: true });
@@ -34,4 +123,3 @@ export async function handleUserLogout(req, res) {
     res.clearCookie("uid");
     return res.redirect("/login");
 }
-

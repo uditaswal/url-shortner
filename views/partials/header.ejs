@@ -13,7 +13,7 @@
                     </span>
                     <span class="profile-text">
                         <span class="profile-name"><%= locals.user.name %></span>
-                        <span class="profile-email"><%= locals.user.email %></span>
+                        <span class="profile-email">@<%= locals.user.username %></span>
                     </span>
                 </a>
                 <form action="/user/logout" method="POST" class="logout-form">
@@ -22,7 +22,7 @@
             </div>
         <% } else { %>
             <div class="nav-links">
-                <a href="/">Home</a>
+                <a href="/">Guest Mode</a>
                 <a href="/login">Login</a>
                 <a href="/user/signup">Signup</a>
             </div>
