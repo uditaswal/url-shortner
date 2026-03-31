@@ -1,22 +1,19 @@
 import jwt from "jsonwebtoken"
-import dotenv from "dotenv";
-
-dotenv.config({ path: '.env' });
-const JWTsecretKey = process.env.JWTsecretKey;
+import config from "./config.util.js";
 
 export function setUser(user) {
     const payload = {
         _id: user._id,
         name: user.name,
-        email: user.email,
+        username: user.username,
     };
-    return jwt.sign(payload, JWTsecretKey, { expiresIn: "1d" });
+    return jwt.sign(payload, config.jwtSecretKey, { expiresIn: "1d" });
 }
 
 export function getUser(token) {
     if (!token) return null;
     try {
-        return jwt.verify(token, JWTsecretKey);
+        return jwt.verify(token, config.jwtSecretKey);
     } catch (err) {
         return null;
     }
@@ -25,7 +22,7 @@ export function getUser(token) {
 export function removeUser(token) {
     if (!token) return null;
     try {
-        return jwt.verify(token, JWTsecretKey);
+        return jwt.verify(token, config.jwtSecretKey);
     } catch (err) {
         return null;
     }

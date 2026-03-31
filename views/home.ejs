@@ -8,83 +8,175 @@
 <body>
     <%- include("partials/header") %>
 
-    <main class="app-main">
-        <div class="container">
-            <h1>URL Shortener</h1>
+        <main class="app-main">
+            <div class="container">
+                <h1>
+                    <%= isGuestMode ? "Guest URL Shortener" : "Your URL Dashboard" %>
+                </h1>
 
-            <% if (locals.url) { %>
-                <div class="success">
-                    Short URL:
-                    <a id="shortUrl" href="<%= locals.url %>" target="_blank">
-                        <%= locals.url %>
-                    </a>
-                    <button class="copy-btn" onclick="copyUrl()">Copy</button>
-                </div>
-            <% } %>
+                <% if (!isGuestMode) { %>
+                    <p class="dashboard-tip">Need overall stats? Click your profile badge in the top bar to open the
+                        profile dashboard.</p>
+                    <% } %>
 
-            <div class="card">
-                <form class="row-form" method="POST" action="/api" onsubmit="return validateForm()">
-                    <input type="text" name="url" id="urlInput" placeholder="https://example.com" required>
-                    <button type="submit">Generate</button>
-                </form>
+                        <% if (isGuestMode) { %>
+                            <div class="card guest-banner">
+                                <p>You are using guest mode. You can shorten URLs, but your dashboard and old links are
+                                    only available after signup or login.</p>
+                                <div class="guest-actions">
+                                    <a href="/login" class="button-link secondary-link">Login</a>
+                                    <a href="/user/signup" class="button-link">Signup</a>
+                                </div>
+                            </div>
+                            <% } %>
+
+                                <% if (locals.error) { %>
+                                    <div class="form-error">
+                                        <%= locals.error %>
+                                    </div>
+                                    <% } %>
+
+                                        <% if (locals.url) { %>
+                                            <div class="success">
+                                                Short URL:
+                                                <a id="shortUrl" href="<%= locals.url %>" target="_blank">
+                                                    <%= locals.url %>
+                                                </a>
+                                                <button class="copy-btn" onclick="copyUrl()">Copy</button>
+                                            </div>
+                                            <% } %>
+
+                                                <div class="card">
+                                                    <form class="row-form" method="POST" action="/api"
+                                                        onsubmit="return validateForm()">
+                                                        <input type="text" name="url" id="urlInput"
+                                                            placeholder="https://example.com"
+                                                            value="<%= locals.values?.url || '' %>" required>
+                                                        <button type="submit">Generate</button>
+                                                    </form>
+                                                </div>
+
+                                                <div class="card">
+                                                    <% if (!isGuestMode) { %>
+                                                        <form class="dashboard-filters" method="GET" action="/">
+                                                            <input type="text" name="search"
+                                                                placeholder="Search by short ID or original URL"
+                                                                value="<%= locals.dashboardFilters?.search || '' %>">
+                                                            <select name="status">
+                                                                <option value="all"
+                                                                    <%=locals.dashboardFilters?.status==="all"
+                                                                    ? "selected" : "" %>>All</option>
+                                                                <option value="active"
+                                                                    <%=locals.dashboardFilters?.status==="active"
+                                                                    ? "selected" : "" %>>Active</option>
+                                                                <option value="inactive"
+                                                                    <%=locals.dashboardFilters?.status==="inactive"
+                                                                    ? "selected" : "" %>>Inactive</option>
+                                                            </select>
+                                                            <select name="sortBy">
+                                                                <option value="createdAt"
+                                                                    <%=locals.dashboardFilters?.sortBy==="createdAt"
+                                                                    ? "selected" : "" %>>Newest</option>
+                                                                <option value="clicks"
+                                                                    <%=locals.dashboardFilters?.sortBy==="clicks"
+                                                                    ? "selected" : "" %>>Clicks</option>
+                                                                <option value="shortId"
+                                                                    <%=locals.dashboardFilters?.sortBy==="shortId"
+                                                                    ? "selected" : "" %>>Short ID</option>
+                                                                <option value="redirectUrl"
+                                                                    <%=locals.dashboardFilters?.sortBy==="redirectUrl"
+                                                                    ? "selected" : "" %>>Original URL</option>
+                                                            </select>
+                                                            <select name="order">
+                                                                <option value="desc"
+                                                                    <%=locals.dashboardFilters?.order==="desc"
+                                                                    ? "selected" : "" %>>Descending</option>
+                                                                <option value="asc"
+                                                                    <%=locals.dashboardFilters?.order==="asc"
+                                                                    ? "selected" : "" %>>Ascending</option>
+                                                            </select>
+                                                            <button type="submit">Apply</button>
+                                                            <a href="/" class="filter-reset">Reset</a>
+                                                        </form>
+                                                        <% } %>
+
+                                                            <% if (!isGuestMode && locals.urls && locals.urls.length> 0)
+                                                                { %>
+                                                                <table>
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>#</th>
+                                                                            <th>Short</th>
+                                                                            <th>Original</th>
+                                                                            <th>Clicks</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <% locals.urls.forEach((el, index)=> { %>
+                                                                            <tr>
+                                                                                <td>
+                                                                                    <%= index + 1 %>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <a href="/<%= el.shortId %>"
+                                                                                        target="_blank">
+                                                                                        <%= el.shortId %>
+                                                                                    </a>
+                                                                                </td>
+                                                                                <td class="ellipsis-cell">
+                                                                                    <a href="<%= el.redirectUrl %>"
+                                                                                        target="_blank">
+                                                                                        <%= el.redirectUrl %>
+                                                                                    </a>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <%= el.visitHistory ?
+                                                                                        el.visitHistory.length : 0 %>
+                                                                                </td>
+                                                                            </tr>
+                                                                            <% }) %>
+                                                                    </tbody>
+                                                                </table>
+                                                                <% } else if (isGuestMode) { %>
+                                                                    <p class="empty">Guest mode does not store a
+                                                                        personal dashboard. Login or signup to see your
+                                                                        own URLs later.</p>
+                                                                    <% } else if (locals.dashboardFilters &&
+                                                                        (locals.dashboardFilters.search ||
+                                                                        locals.dashboardFilters.status !=="all" )) { %>
+                                                                        <p class="empty">No URLs matched your current
+                                                                            filter.</p>
+                                                                        <% } else { %>
+                                                                            <p class="empty">You have not created any
+                                                                                URLs yet.</p>
+                                                                            <% } %>
+                                                </div>
             </div>
+        </main>
 
-            <div class="card">
-                <% if (locals.urls && locals.urls.length > 0) { %>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Short</th>
-                                <th>Original</th>
-                                <th>Clicks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% locals.urls.forEach((el, index) => { %>
-                                <tr>
-                                    <td><%= index + 1 %></td>
-                                    <td>
-                                        <a href="/<%= el.shortId %>" target="_blank"><%= el.shortId %></a>
-                                    </td>
-                                    <td class="ellipsis-cell">
-                                        <a href="<%= el.redirectUrl %>" target="_blank"><%= el.redirectUrl %></a>
-                                    </td>
-                                    <td><%= el.visitHistory ? el.visitHistory.length : 0 %></td>
-                                </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
-                <% } else { %>
-                    <p class="empty">No URLs created yet</p>
-                <% } %>
-            </div>
-        </div>
-    </main>
+        <%- include("partials/footer") %>
 
-    <%- include("partials/footer") %>
+            <script>
+                function copyUrl() {
+                    const shortUrlElement = document.getElementById("shortUrl");
+                    if (!shortUrlElement) return;
 
-    <script>
-        function copyUrl() {
-            const shortUrlElement = document.getElementById("shortUrl");
-            if (!shortUrlElement) return;
+                    const text = shortUrlElement.innerText;
+                    navigator.clipboard.writeText(text);
+                    alert("Copied!");
+                }
 
-            const text = shortUrlElement.innerText;
-            navigator.clipboard.writeText(text);
-            alert("Copied!");
-        }
-
-        function validateForm() {
-            const url = document.getElementById("urlInput").value;
-            try {
-                new URL(url);
-                return true;
-            } catch {
-                alert("Enter a valid URL (include https://)");
-                return false;
-            }
-        }
-    </script>
+                function validateForm() {
+                    const url = document.getElementById("urlInput").value;
+                    try {
+                        new URL(url);
+                        return true;
+                    } catch {
+                        alert("Enter a valid URL (include https://)");
+                        return false;
+                    }
+                }
+            </script>
 </body>
 
 </html>

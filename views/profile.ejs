@@ -28,6 +28,30 @@
             </div>
 
             <div class="card">
+                <h2>Country Stats</h2>
+                <% if (locals.countryStats && locals.countryStats.length > 0) { %>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Country</th>
+                                <th>Clicks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% locals.countryStats.forEach((item) => { %>
+                                <tr>
+                                    <td><%= item.country %></td>
+                                    <td><%= item.clicks %></td>
+                                </tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                <% } else { %>
+                    <p class="empty">No country data yet. Country stats will appear once visits come through a proxy that forwards location headers.</p>
+                <% } %>
+            </div>
+
+            <div class="card">
                 <% if (locals.urls && locals.urls.length > 0) { %>
                     <table>
                         <thead>
@@ -46,7 +70,20 @@
                                     <td><a href="/<%= el.shortId %>" target="_blank"><%= el.shortId %></a></td>
                                     <td class="ellipsis-cell"><a href="<%= el.redirectUrl %>" target="_blank"><%= el.redirectUrl %></a></td>
                                     <td><%= el.visitHistory ? el.visitHistory.length : 0 %></td>
-                                    <td><%= el.createdAt ? new Date(el.createdAt).toLocaleString() : "-" %></td>
+                                    <td>
+                                        <%= el.createdAt
+                                            ? new Date(el.createdAt).toLocaleString("en-IN", {
+                                                timeZone: "Asia/Kolkata",
+                                                day: "numeric",
+                                                month: "numeric",
+                                                year: "numeric",
+                                                hour: "numeric",
+                                                minute: "2-digit",
+                                                second: "2-digit",
+                                                hour12: true
+                                            }) + " IST"
+                                            : "-" %>
+                                    </td>
                                 </tr>
                             <% }) %>
                         </tbody>

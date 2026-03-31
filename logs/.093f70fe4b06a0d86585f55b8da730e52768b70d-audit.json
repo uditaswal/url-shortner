@@ -1,0 +1,20 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 15
+    },
+    "auditLog": "C:\\Users\\udita\\Documents\\Udit Files\\code\\web\\Node Js\\learn_2026\\02_URLShortnerV2\\logs\\.093f70fe4b06a0d86585f55b8da730e52768b70d-audit.json",
+    "files": [
+        {
+            "date": 1774970016987,
+            "name": "C:\\Users\\udita\\Documents\\Udit Files\\code\\web\\Node Js\\learn_2026\\02_URLShortnerV2\\logs\\app-31-Mar-2026.log",
+            "hash": "69e4ecc8e5e185e5d8523ed94a74f33cce54107cda85bf3da500954d26f2896e"
+        },
+        {
+            "date": 1774981834879,
+            "name": "C:\\Users\\udita\\Documents\\Udit Files\\code\\web\\Node Js\\learn_2026\\02_URLShortnerV2\\logs\\app-01-Apr-2026.log",
+            "hash": "932887a3fc1ab3e5896bcb8f5871478c03cb13d622ac172526142d5b114cde7d"
+        }
+    ],
+    "hashType": "sha256"
+}

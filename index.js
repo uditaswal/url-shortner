@@ -1,52 +1,12 @@
-import express from 'express';
-import dotenv from 'dotenv';
 import connectDB from './dbConnection.js'
-import router from './routes/url.routes.js';
-import staticRouter from './routes/static.routes.js';
-import userRouter from './routes/user.routes.js';
-import { logResAndRes } from './middleware/url.middleware.js'
-import path from 'path'
-import { fileURLToPath } from 'url';
-import cookieParser from 'cookie-parser';
-import { restrictToLogginUserOnly, checkAuth } from './middleware/auth.middleware.js';
+import { createApp } from './app.js';
+import config from './util/config.util.js';
+import logger from "./util/logger.util.js"
 
-// current directory setup
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename)
-
-// dot env
-dotenv.config({ path: '.env' });
-
-// express setup
-const app = express();
-const PORT = process.env.PORT || 8000;
-
-// server side rendering via ejs
-app.set("view engine", "ejs")
-app.set("views", path.join(__dirname, "views"))
-app.use(express.static(path.join(__dirname, "public")));
-
-// middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }))
-app.use(cookieParser());
-app.use(checkAuth);
-app.use((req, res, next) => {
-    res.locals.user = req.user || null;
-    next();
-});
-app.use(logResAndRes("log.txt"));
-
-
-
-app.use('/', staticRouter);
-app.use('/api', restrictToLogginUserOnly, router);
-app.use('/user', userRouter)
-
+const app = createApp();
+const PORT = config.port;
 
 // mongodb Connection
-const dbURL = process.env.dbURL;
-const dbAppName = process.env.dbAppName;
-connectDB(dbURL, dbAppName);
+connectDB(config.db.url, config.db.name, config.db.accountLabel);
 
-app.listen(PORT, () => console.log(`Server is listening on http://localhost:${PORT}/ at ${new Date().toString()} `));
+app.listen(PORT, () => logger.info(`Server is listening on http://localhost:${PORT}/ at ${new Date().toString()} `));

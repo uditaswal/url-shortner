@@ -13,15 +13,22 @@
             <h1>Login</h1>
 
             <div class="card">
+                <% if (locals.error) { %>
+                    <div class="form-error"><%= locals.error %></div>
+                <% } %>
+
                 <form action="/user/login" method="POST">
                     <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" name="email" placeholder="john@example.com" required>
+                        <label>Username</label>
+                        <input type="text" name="username" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" required>
                     </div>
 
                     <div class="form-group">
                         <label>Password</label>
-                        <input type="password" name="password" placeholder="********" required>
+                        <div class="password-field">
+                            <input type="password" name="password" id="loginPassword" placeholder="********" autocomplete="current-password" required>
+                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">Show</button>
+                        </div>
                     </div>
 
                     <button class="full-button" type="submit">Login</button>
@@ -35,6 +42,17 @@
     </main>
 
     <%- include("partials/footer") %>
+
+    <script>
+        function togglePassword(inputId, button) {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+
+            const isPassword = input.type === "password";
+            input.type = isPassword ? "text" : "password";
+            button.textContent = isPassword ? "Hide" : "Show";
+        }
+    </script>
 </body>
 
 </html>
