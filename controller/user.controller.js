@@ -1,5 +1,5 @@
 import User from "../model/user.models.js";
-import { setUser, removeUser } from '../util/auth.util.js'
+import { getAuthCookieOptions, removeUser, setUser } from '../util/auth.util.js'
 import {
     isSafePlainInput,
     isStrongPassword,
@@ -9,6 +9,7 @@ import {
 } from "../util/validation.util.js";
 
 const bcryptHashRegex = /^\$2[aby]\$\d{2}\$/;
+const authCookieOptions = getAuthCookieOptions();
 
 function renderSignup(res, values = {}, error = null) {
     return res.status(400).render("signup", {
@@ -65,7 +66,7 @@ export async function handleUserSignup(req, res) {
     });
 
     const token = setUser(user);
-    res.cookie("uid", token, { httpOnly: true });
+    res.cookie("uid", token, authCookieOptions);
 
     return res.redirect("/");
 }
@@ -110,16 +111,23 @@ export async function handleUserLogin(req, res) {
     }
 
     const token = setUser(user);
-    res.cookie("uid", token, { httpOnly: true });
+    res.cookie("uid", token, authCookieOptions);
 
     return res.redirect("/");
 }
 
 export async function handleUserLogout(req, res) {
     const token = req.cookies?.uid;
+    const payload = removeUser(token);
 
-    removeUser(token);
+    if (payload?._id) {
+        await User.findByIdAndUpdate(payload._id, {
+            $inc: {
+                tokenVersion: 1
+            }
+        });
+    }
 
-    res.clearCookie("uid");
+    res.clearCookie("uid", authCookieOptions);
     return res.redirect("/login");
 }

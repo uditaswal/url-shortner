@@ -5,8 +5,6 @@ import logger from "./util/logger.util.js"
 
 const app = createApp();
 const PORT = config.port;
-
-// mongodb Connection
-connectDB(config.db.url, config.db.name, config.db.accountLabel);
+await connectDB(config.db.url, config.db.name, config.db.accountLabel);
 
 app.listen(PORT, () => logger.info(`Server is listening on http://localhost:${PORT}/ at ${new Date().toString()} `));

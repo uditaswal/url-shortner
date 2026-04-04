@@ -1,13 +1,24 @@
-import express from 'express';
-import { generateShortId, redirectToShortURL, getShortURLAnalytics } from '../controller/url.controller.js';
-import { restrictToLogginUserOnly } from '../middleware/auth.middleware.js';
-import { urlCreateRateLimiter } from '../middleware/rateLimiter.middleware.js';
+import express from "express";
+import {
+    deleteShortUrl,
+    generateShortId,
+    getShortURLAnalytics,
+    moderateShortUrl,
+    redirectToShortURL,
+    updateShortUrl
+} from "../controller/url.controller.js";
+import { restrictToAdminOnly, restrictToLogginUserOnly } from "../middleware/auth.middleware.js";
+import { urlCreateRateLimiter } from "../middleware/rateLimiter.middleware.js";
 
-const router = express.Router();
+const apiRouter = express.Router();
+const redirectRouter = express.Router();
 
-router.route('/').get((req, res) => { return res.status(200).json({ msg: "Hello from server" }) }).post(urlCreateRateLimiter, generateShortId);
-router.route('/analytics/:shortId').get(restrictToLogginUserOnly, getShortURLAnalytics);
-router.route('/:shortId').get(redirectToShortURL);
+apiRouter.route("/").get((req, res) => res.status(200).json({ msg: "Hello from server" })).post(urlCreateRateLimiter, generateShortId);
+apiRouter.route("/analytics/:shortId").get(restrictToLogginUserOnly, getShortURLAnalytics);
+apiRouter.route("/manage/:shortId").post(restrictToLogginUserOnly, updateShortUrl);
+apiRouter.route("/delete/:shortId").post(restrictToLogginUserOnly, deleteShortUrl);
+apiRouter.route("/admin/moderate/:shortId").post(restrictToAdminOnly, moderateShortUrl);
 
+redirectRouter.route("/:shortId").get(redirectToShortURL);
 
-export default router;
+export { apiRouter, redirectRouter };

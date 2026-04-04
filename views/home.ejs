@@ -6,177 +6,579 @@
 </head>
 
 <body>
-    <%- include("partials/header") %>
+    <% function formatDisplayDate(value) { return value ? new Date(value).toLocaleString("en-IN") : "Never" ; } function
+        formatCompactDate(value) { if (!value) { return { date: "Never" , time: "" }; } const date=new Date(value);
+        return { date: date.toLocaleDateString("en-IN", { day: "numeric" , month: "short" , year: "numeric" }), time:
+        date.toLocaleTimeString("en-IN", { hour: "numeric" , minute: "2-digit" }) }; } function
+        formatEditableDate(value) { return value ? new Date(value).toISOString().slice(0, 10) : "" ; } function
+        formatEditableTime(value) { return value ? new Date(value).toISOString().slice(11, 16) : "" ; } %>
 
-        <main class="app-main">
-            <div class="container">
-                <h1>
-                    <%= isGuestMode ? "Guest URL Shortener" : "Your URL Dashboard" %>
-                </h1>
+        <%- include("partials/header") %>
 
-                <% if (!isGuestMode) { %>
-                    <p class="dashboard-tip">Need overall stats? Click your profile badge in the top bar to open the
-                        profile dashboard.</p>
-                    <% } %>
+            <main class="app-main">
+                <div class="container">
+                    <h1>
+                        <%= isGuestMode ? "Guest URL Shortener" : "Your URL Dashboard" %>
+                    </h1>
 
-                        <% if (isGuestMode) { %>
-                            <div class="card guest-banner">
-                                <p>You are using guest mode. You can shorten URLs, but your dashboard and old links are
-                                    only available after signup or login.</p>
-                                <div class="guest-actions">
-                                    <a href="/login" class="button-link secondary-link">Login</a>
-                                    <a href="/user/signup" class="button-link">Signup</a>
-                                </div>
-                            </div>
-                            <% } %>
+                    <% if (!isGuestMode) { %>
+                        <p class="dashboard-tip">Need overall stats? Click your profile badge in the top bar to open the
+                            profile dashboard.</p>
+                        <% } %>
 
-                                <% if (locals.error) { %>
-                                    <div class="form-error">
-                                        <%= locals.error %>
+                            <% if (isGuestMode) { %>
+                                <div class="card guest-banner">
+                                    <p>You are using guest mode. You can shorten URLs, but your dashboard and old links
+                                        are only available after signup or login.</p>
+                                    <div class="guest-actions">
+                                        <a href="/login" class="button-link secondary-link">Login</a>
+                                        <a href="/user/signup" class="button-link">Signup</a>
                                     </div>
-                                    <% } %>
+                                </div>
+                                <% } %>
 
-                                        <% if (locals.url) { %>
-                                            <div class="success">
-                                                Short URL:
-                                                <a id="shortUrl" href="<%= locals.url %>" target="_blank">
-                                                    <%= locals.url %>
-                                                </a>
-                                                <button class="copy-btn" onclick="copyUrl()">Copy</button>
-                                            </div>
-                                            <% } %>
+                                    <% if (locals.error) { %>
+                                        <div class="form-error">
+                                            <%= locals.error %>
+                                        </div>
+                                        <% } %>
 
-                                                <div class="card">
-                                                    <form class="row-form" method="POST" action="/api"
-                                                        onsubmit="return validateForm()">
-                                                        <input type="text" name="url" id="urlInput"
-                                                            placeholder="https://example.com"
-                                                            value="<%= locals.values?.url || '' %>" required>
-                                                        <button type="submit">Generate</button>
-                                                    </form>
+                                            <% if (locals.successMessage) { %>
+                                                <div class="success">
+                                                    <%= locals.successMessage %>
                                                 </div>
+                                                <% } %>
 
-                                                <div class="card">
-                                                    <% if (!isGuestMode) { %>
-                                                        <form class="dashboard-filters" method="GET" action="/">
-                                                            <input type="text" name="search"
-                                                                placeholder="Search by short ID or original URL"
-                                                                value="<%= locals.dashboardFilters?.search || '' %>">
-                                                            <select name="status">
-                                                                <option value="all"
-                                                                    <%=locals.dashboardFilters?.status==="all"
-                                                                    ? "selected" : "" %>>All</option>
-                                                                <option value="active"
-                                                                    <%=locals.dashboardFilters?.status==="active"
-                                                                    ? "selected" : "" %>>Active</option>
-                                                                <option value="inactive"
-                                                                    <%=locals.dashboardFilters?.status==="inactive"
-                                                                    ? "selected" : "" %>>Inactive</option>
-                                                            </select>
-                                                            <select name="sortBy">
-                                                                <option value="createdAt"
-                                                                    <%=locals.dashboardFilters?.sortBy==="createdAt"
-                                                                    ? "selected" : "" %>>Newest</option>
-                                                                <option value="clicks"
-                                                                    <%=locals.dashboardFilters?.sortBy==="clicks"
-                                                                    ? "selected" : "" %>>Clicks</option>
-                                                                <option value="shortId"
-                                                                    <%=locals.dashboardFilters?.sortBy==="shortId"
-                                                                    ? "selected" : "" %>>Short ID</option>
-                                                                <option value="redirectUrl"
-                                                                    <%=locals.dashboardFilters?.sortBy==="redirectUrl"
-                                                                    ? "selected" : "" %>>Original URL</option>
-                                                            </select>
-                                                            <select name="order">
-                                                                <option value="desc"
-                                                                    <%=locals.dashboardFilters?.order==="desc"
-                                                                    ? "selected" : "" %>>Descending</option>
-                                                                <option value="asc"
-                                                                    <%=locals.dashboardFilters?.order==="asc"
-                                                                    ? "selected" : "" %>>Ascending</option>
-                                                            </select>
-                                                            <button type="submit">Apply</button>
-                                                            <a href="/" class="filter-reset">Reset</a>
-                                                        </form>
+                                                    <% if (locals.url) { %>
+                                                        <div class="success">
+                                                            Short URL:
+                                                            <a id="shortUrl" href="<%= locals.url %>" target="_blank">
+                                                                <%= locals.url %>
+                                                            </a>
+                                                            <button class="copy-btn" id="copyShortUrlButton"
+                                                                type="button">Copy</button>
+                                                        </div>
                                                         <% } %>
 
-                                                            <% if (!isGuestMode && locals.urls && locals.urls.length> 0)
-                                                                { %>
-                                                                <table>
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>#</th>
-                                                                            <th>Short</th>
-                                                                            <th>Original</th>
-                                                                            <th>Clicks</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        <% locals.urls.forEach((el, index)=> { %>
-                                                                            <tr>
-                                                                                <td>
-                                                                                    <%= index + 1 %>
-                                                                                </td>
-                                                                                <td>
-                                                                                    <a href="/<%= el.shortId %>"
-                                                                                        target="_blank">
-                                                                                        <%= el.shortId %>
-                                                                                    </a>
-                                                                                </td>
-                                                                                <td class="ellipsis-cell">
-                                                                                    <a href="<%= el.redirectUrl %>"
-                                                                                        target="_blank">
-                                                                                        <%= el.redirectUrl %>
-                                                                                    </a>
-                                                                                </td>
-                                                                                <td>
-                                                                                    <%= el.visitHistory ?
-                                                                                        el.visitHistory.length : 0 %>
-                                                                                </td>
-                                                                            </tr>
-                                                                            <% }) %>
-                                                                    </tbody>
-                                                                </table>
-                                                                <% } else if (isGuestMode) { %>
-                                                                    <p class="empty">Guest mode does not store a
-                                                                        personal dashboard. Login or signup to see your
-                                                                        own URLs later.</p>
-                                                                    <% } else if (locals.dashboardFilters &&
-                                                                        (locals.dashboardFilters.search ||
-                                                                        locals.dashboardFilters.status !=="all" )) { %>
-                                                                        <p class="empty">No URLs matched your current
-                                                                            filter.</p>
-                                                                        <% } else { %>
-                                                                            <p class="empty">You have not created any
-                                                                                URLs yet.</p>
-                                                                            <% } %>
-                                                </div>
-            </div>
-        </main>
+                                                            <div class="card">
+                                                                <div class="form-panel-header">
+                                                                    <div>
+                                                                        <h2>Create A Short Link</h2>
+                                                                        <p>Use a random short code for speed, or reserve
+                                                                            your own alias when you want something
+                                                                            memorable.</p>
+                                                                    </div>
+                                                                </div>
+                                                                <form class="row-form" method="POST" action="/api"
+                                                                    id="shortUrlForm">
+                                                                    <input type="text" name="url" id="urlInput"
+                                                                        placeholder="https://example.com"
+                                                                        value="<%= locals.values?.url || '' %>"
+                                                                        required>
+                                                                    <input type="text" name="customShortId"
+                                                                        id="customShortIdInput"
+                                                                        placeholder="Custom short ID (optional)"
+                                                                        value="<%= locals.values?.customShortId || '' %>"
+                                                                        pattern="^[A-Za-z0-9_-]{6,20}$"
+                                                                        title="Use 6 to 20 letters, numbers, hyphens, or underscores">
+                                                                    <div class="expiration-field-group">
+                                                                        <div class="expiration-input-stack">
+                                                                            <input
+                                                                                type="<%= locals.values?.expiresOn ? 'date' : 'text' %>"
+                                                                                name="expiresOn" id="expiresOnInput"
+                                                                                value="<%= locals.values?.expiresOn || '' %>"
+                                                                                min="<%= new Date().toISOString().slice(0, 10) %>"
+                                                                                placeholder="dd-mm-yyyy"
+                                                                                inputmode="numeric"
+                                                                                data-native-type="date"
+                                                                                data-empty-placeholder="dd-mm-yyyy"
+                                                                                class="smart-native-input">
+                                                                            <input
+                                                                                type="<%= locals.values?.expiresAtTime ? 'time' : 'text' %>"
+                                                                                name="expiresAtTime"
+                                                                                id="expiresAtTimeInput"
+                                                                                value="<%= locals.values?.expiresAtTime || '' %>"
+                                                                                step="60" placeholder="hh:mm"
+                                                                                inputmode="numeric"
+                                                                                data-native-type="time"
+                                                                                data-empty-placeholder="hh:mm"
+                                                                                class="smart-native-input">
+                                                                        </div>
+                                                                    </div>
+                                                                    <button type="submit">Generate</button>
+                                                                </form>
+                                                                <div class="form-note-grid">
+                                                                    <div class="form-note-card">
+                                                                        <strong>Original URL</strong>
+                                                                        <span>The destination users should land on after
+                                                                            opening the short link.</span>
+                                                                    </div>
+                                                                    <div class="form-note-card">
+                                                                        <strong>Custom Short ID</strong>
+                                                                        <span>Optional. Pick your own alias, or leave it
+                                                                            blank to let the app generate one.</span>
+                                                                    </div>
+                                                                    <div class="form-note-card">
+                                                                        <strong>Expiration</strong>
+                                                                        <span>Optional. Pick or type a date and time.
+                                                                            The link will stop redirecting after that
+                                                                            moment.</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
 
-        <%- include("partials/footer") %>
+                                                            <div class="card">
+                                                                <% if (!isGuestMode) { %>
+                                                                    <form class="dashboard-filters" method="GET"
+                                                                        action="/">
+                                                                        <div class="control-group control-group-wide">
+                                                                            <label for="dashboardSearch">Search</label>
+                                                                            <input id="dashboardSearch" type="text"
+                                                                                name="search"
+                                                                                placeholder="Search by short ID or original URL"
+                                                                                value="<%= locals.dashboardFilters?.search || '' %>">
+                                                                        </div>
+                                                                        <div class="control-group">
+                                                                            <label for="dashboardStatus">Filter By
+                                                                                Status</label>
+                                                                            <select id="dashboardStatus" name="status">
+                                                                                <option value="all"
+                                                                                    <%=locals.dashboardFilters?.status==="all"
+                                                                                    ? "selected" : "" %>>All statuses
+                                                                                </option>
+                                                                                <option value="active"
+                                                                                    <%=locals.dashboardFilters?.status==="active"
+                                                                                    ? "selected" : "" %>>Active only
+                                                                                </option>
+                                                                                <option value="inactive"
+                                                                                    <%=locals.dashboardFilters?.status==="inactive"
+                                                                                    ? "selected" : "" %>>No clicks yet
+                                                                                </option>
+                                                                                <option value="expired"
+                                                                                    <%=locals.dashboardFilters?.status==="expired"
+                                                                                    ? "selected" : "" %>>Expired only
+                                                                                </option>
+                                                                                <option value="disabled"
+                                                                                    <%=locals.dashboardFilters?.status==="disabled"
+                                                                                    ? "selected" : "" %>>Disabled only
+                                                                                </option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="control-group">
+                                                                            <label for="dashboardSortBy">Sort By</label>
+                                                                            <select id="dashboardSortBy" name="sortBy">
+                                                                                <option value="createdAt"
+                                                                                    <%=locals.dashboardFilters?.sortBy==="createdAt"
+                                                                                    ? "selected" : "" %>>Created date
+                                                                                </option>
+                                                                                <option value="clicks"
+                                                                                    <%=locals.dashboardFilters?.sortBy==="clicks"
+                                                                                    ? "selected" : "" %>>Clicks</option>
+                                                                                <option value="shortId"
+                                                                                    <%=locals.dashboardFilters?.sortBy==="shortId"
+                                                                                    ? "selected" : "" %>>Short ID
+                                                                                </option>
+                                                                                <option value="redirectUrl"
+                                                                                    <%=locals.dashboardFilters?.sortBy==="redirectUrl"
+                                                                                    ? "selected" : "" %>>Original URL
+                                                                                </option>
+                                                                                <option value="expiresAt"
+                                                                                    <%=locals.dashboardFilters?.sortBy==="expiresAt"
+                                                                                    ? "selected" : "" %>>Expiration date
+                                                                                </option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div class="control-group">
+                                                                            <label for="dashboardOrder">Sort
+                                                                                Order</label>
+                                                                            <select id="dashboardOrder" name="order">
+                                                                                <option value="desc"
+                                                                                    <%=locals.dashboardFilters?.order==="desc"
+                                                                                    ? "selected" : "" %>>Newest to
+                                                                                    oldest</option>
+                                                                                <option value="asc"
+                                                                                    <%=locals.dashboardFilters?.order==="asc"
+                                                                                    ? "selected" : "" %>>Oldest to
+                                                                                    newest</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <button type="submit">Apply</button>
+                                                                        <a href="/" class="filter-reset">Reset</a>
+                                                                    </form>
+                                                                    <% } %>
 
-            <script>
-                function copyUrl() {
-                    const shortUrlElement = document.getElementById("shortUrl");
-                    if (!shortUrlElement) return;
+                                                                        <% if (!isGuestMode && locals.urls &&
+                                                                            locals.urls.length> 0) { %>
+                                                                            <div class="table-wrap">
+                                                                                <table class="dashboard-table">
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th>#</th>
+                                                                                            <th>Short</th>
+                                                                                            <th>Original</th>
+                                                                                            <th>Clicks</th>
+                                                                                            <th>Status</th>
+                                                                                            <th class="date-column">
+                                                                                                Expires</th>
+                                                                                            <th class="date-column">
+                                                                                                Created</th>
+                                                                                            <th class="date-column">Last
+                                                                                                Updated</th>
+                                                                                            <th class="actions-column">
+                                                                                                Actions</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        <% locals.urls.forEach((el,
+                                                                                            index)=> { %>
+                                                                                            <% const
+                                                                                                expiresMeta=formatCompactDate(el.expiresAt);
+                                                                                                %>
+                                                                                                <% const
+                                                                                                    createdMeta=formatCompactDate(el.createdAt);
+                                                                                                    %>
+                                                                                                    <% const
+                                                                                                        updatedMeta=el.lastEditedAt
+                                                                                                        ?
+                                                                                                        formatCompactDate(el.lastEditedAt)
+                                                                                                        : null; %>
+                                                                                                        <tr>
+                                                                                                            <td>
+                                                                                                                <%= index
+                                                                                                                    + 1
+                                                                                                                    %>
+                                                                                                            </td>
+                                                                                                            <td><a href="/<%= el.shortId %>"
+                                                                                                                    target="_blank">
+                                                                                                                    <%= el.shortId
+                                                                                                                        %>
+                                                                                                                </a>
+                                                                                                            </td>
+                                                                                                            <td
+                                                                                                                class="ellipsis-cell">
+                                                                                                                <a href="<%= el.redirectUrl %>"
+                                                                                                                    target="_blank">
+                                                                                                                    <%= el.redirectUrl
+                                                                                                                        %>
+                                                                                                                </a>
+                                                                                                            </td>
+                                                                                                            <td>
+                                                                                                                <%= el.visitHistory
+                                                                                                                    ?
+                                                                                                                    el.visitHistory.filter((visit)=>
+                                                                                                                    !visit.isBot).length
+                                                                                                                    : 0
+                                                                                                                    %>
+                                                                                                            </td>
+                                                                                                            <td>
+                                                                                                                <%= el.statusLabel
+                                                                                                                    %>
+                                                                                                            </td>
+                                                                                                            <td
+                                                                                                                class="date-cell">
+                                                                                                                <span
+                                                                                                                    class="date-primary">
+                                                                                                                    <%= expiresMeta.date
+                                                                                                                        %>
+                                                                                                                </span>
+                                                                                                                <% if
+                                                                                                                    (expiresMeta.time)
+                                                                                                                    { %>
+                                                                                                                    <span
+                                                                                                                        class="date-secondary">
+                                                                                                                        <%= expiresMeta.time
+                                                                                                                            %>
+                                                                                                                    </span>
+                                                                                                                    <% }
+                                                                                                                        %>
+                                                                                                            </td>
+                                                                                                            <td
+                                                                                                                class="date-cell">
+                                                                                                                <span
+                                                                                                                    class="date-primary">
+                                                                                                                    <%= createdMeta.date
+                                                                                                                        %>
+                                                                                                                </span>
+                                                                                                                <span
+                                                                                                                    class="date-secondary">
+                                                                                                                    <%= createdMeta.time
+                                                                                                                        %>
+                                                                                                                </span>
+                                                                                                            </td>
+                                                                                                            <td
+                                                                                                                class="date-cell">
+                                                                                                                <% if
+                                                                                                                    (updatedMeta)
+                                                                                                                    { %>
+                                                                                                                    <span
+                                                                                                                        class="date-primary">
+                                                                                                                        <%= updatedMeta.date
+                                                                                                                            %>
+                                                                                                                    </span>
+                                                                                                                    <span
+                                                                                                                        class="date-secondary">
+                                                                                                                        <%= updatedMeta.time
+                                                                                                                            %>
+                                                                                                                    </span>
+                                                                                                                    <% } else
+                                                                                                                        {
+                                                                                                                        %>
+                                                                                                                        <span
+                                                                                                                            class="date-muted">No
+                                                                                                                            updates</span>
+                                                                                                                        <% }
+                                                                                                                            %>
+                                                                                                            </td>
+                                                                                                            <td
+                                                                                                                class="actions-cell">
+                                                                                                                <details
+                                                                                                                    class="edit-dropdown">
+                                                                                                                    <summary>
+                                                                                                                        Edit
+                                                                                                                    </summary>
+                                                                                                                    <div
+                                                                                                                        class="edit-dropdown-panel">
+                                                                                                                        <div
+                                                                                                                            class="edit-target">
+                                                                                                                            Editing
+                                                                                                                            <strong>
+                                                                                                                                <%= el.shortId
+                                                                                                                                    %>
+                                                                                                                            </strong>
+                                                                                                                            <span>This
+                                                                                                                                updates
+                                                                                                                                the
+                                                                                                                                destination,
+                                                                                                                                alias,
+                                                                                                                                or
+                                                                                                                                expiration
+                                                                                                                                for
+                                                                                                                                this
+                                                                                                                                short
+                                                                                                                                link.</span>
+                                                                                                                        </div>
+                                                                                                                        <div
+                                                                                                                            class="edit-meta">
+                                                                                                                            <div>
+                                                                                                                                <strong>Created:</strong>
+                                                                                                                                <span>
+                                                                                                                                    <%= formatDisplayDate(el.createdAt)
+                                                                                                                                        %>
+                                                                                                                                </span>
+                                                                                                                            </div>
+                                                                                                                            <div>
+                                                                                                                                <strong>Last
+                                                                                                                                    Updated:</strong>
+                                                                                                                                <span>
+                                                                                                                                    <%= el.lastEditedAt
+                                                                                                                                        ?
+                                                                                                                                        formatDisplayDate(el.lastEditedAt)
+                                                                                                                                        : "No Updates"
+                                                                                                                                        %>
+                                                                                                                                </span>
+                                                                                                                            </div>
+                                                                                                                        </div>
+                                                                                                                        <form
+                                                                                                                            method="POST"
+                                                                                                                            action="/api/manage/<%= el.shortId %>"
+                                                                                                                            class="manage-url-form">
+                                                                                                                            <label>
+                                                                                                                                <span>Short
+                                                                                                                                    ID</span>
+                                                                                                                                <input
+                                                                                                                                    type="text"
+                                                                                                                                    name="customShortId"
+                                                                                                                                    value="<%= el.shortId %>"
+                                                                                                                                    pattern="^[A-Za-z0-9_-]{6,20}$"
+                                                                                                                                    required>
+                                                                                                                            </label>
+                                                                                                                            <label>
+                                                                                                                                <span>Destination
+                                                                                                                                    URL</span>
+                                                                                                                                <input
+                                                                                                                                    type="text"
+                                                                                                                                    name="url"
+                                                                                                                                    value="<%= el.redirectUrl %>"
+                                                                                                                                    required>
+                                                                                                                            </label>
+                                                                                                                            <label>
+                                                                                                                                <span>Expiration</span>
+                                                                                                                                <div
+                                                                                                                                    class="expiration-field-group expiration-field-group-compact">
+                                                                                                                                    <div
+                                                                                                                                        class="expiration-input-stack">
+                                                                                                                                        <input
+                                                                                                                                            type="<%= el.expiresAt ? 'date' : 'text' %>"
+                                                                                                                                            id="edit-expiration-date-<%= index %>"
+                                                                                                                                            name="expiresOn"
+                                                                                                                                            value="<%= formatEditableDate(el.expiresAt) %>"
+                                                                                                                                            min="<%= new Date().toISOString().slice(0, 10) %>"
+                                                                                                                                            placeholder="dd-mm-yyyy"
+                                                                                                                                            inputmode="numeric"
+                                                                                                                                            data-native-type="date"
+                                                                                                                                            data-empty-placeholder="dd-mm-yyyy"
+                                                                                                                                            class="smart-native-input">
+                                                                                                                                        <input
+                                                                                                                                            type="<%= el.expiresAt ? 'time' : 'text' %>"
+                                                                                                                                            name="expiresAtTime"
+                                                                                                                                            value="<%= formatEditableTime(el.expiresAt) %>"
+                                                                                                                                            step="60"
+                                                                                                                                            placeholder="hh:mm"
+                                                                                                                                            inputmode="numeric"
+                                                                                                                                            data-native-type="time"
+                                                                                                                                            data-empty-placeholder="hh:mm"
+                                                                                                                                            class="smart-native-input">
+                                                                                                                                    </div>
+                                                                                                                                </div>
+                                                                                                                            </label>
+                                                                                                                            <div
+                                                                                                                                class="edit-actions">
+                                                                                                                                <button
+                                                                                                                                    type="submit">Save
+                                                                                                                                    Changes</button>
+                                                                                                                            </div>
+                                                                                                                        </form>
+                                                                                                                    </div>
+                                                                                                                </details>
+                                                                                                                <form
+                                                                                                                    method="POST"
+                                                                                                                    action="/api/delete/<%= el.shortId %>"
+                                                                                                                    class="inline-delete-form">
+                                                                                                                    <button
+                                                                                                                        type="submit"
+                                                                                                                        class="danger-button">Delete</button>
+                                                                                                                </form>
+                                                                                                            </td>
+                                                                                                        </tr>
+                                                                                                        <% }) %>
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                            <% } else if (isGuestMode) { %>
+                                                                                <p class="empty">Guest mode does not
+                                                                                    store a personal dashboard. Login or
+                                                                                    signup to see your own URLs later.
+                                                                                </p>
+                                                                                <% } else if (locals.dashboardFilters &&
+                                                                                    (locals.dashboardFilters.search ||
+                                                                                    locals.dashboardFilters.status
+                                                                                    !=="all" )) { %>
+                                                                                    <p class="empty">No URLs matched
+                                                                                        your current filter.</p>
+                                                                                    <% } else { %>
+                                                                                        <p class="empty">You have not
+                                                                                            created any URLs yet.</p>
+                                                                                        <% } %>
+                                                            </div>
+                </div>
+            </main>
 
-                    const text = shortUrlElement.innerText;
-                    navigator.clipboard.writeText(text);
-                    alert("Copied!");
-                }
+            <%- include("partials/footer") %>
 
-                function validateForm() {
-                    const url = document.getElementById("urlInput").value;
-                    try {
-                        new URL(url);
-                        return true;
-                    } catch {
-                        alert("Enter a valid URL (include https://)");
-                        return false;
+                <script nonce="<%= cspNonce %>">
+                    function copyUrl() {
+                        const shortUrlElement = document.getElementById("shortUrl");
+                        if (!shortUrlElement) return;
+
+                        const text = shortUrlElement.innerText;
+                        navigator.clipboard.writeText(text);
+                        alert("Copied!");
                     }
-                }
-            </script>
+
+                    function validateForm() {
+                        const url = document.getElementById("urlInput").value;
+                        try {
+                            new URL(url);
+                            return true;
+                        } catch {
+                            alert("Enter a valid URL (include https://)");
+                            return false;
+                        }
+                    }
+
+                    const copyShortUrlButton = document.getElementById("copyShortUrlButton");
+                    if (copyShortUrlButton) {
+                        copyShortUrlButton.addEventListener("click", copyUrl);
+                    }
+
+                    const shortUrlForm = document.getElementById("shortUrlForm");
+                    if (shortUrlForm) {
+                        shortUrlForm.addEventListener("submit", (event) => {
+                            if (!validateForm()) {
+                                event.preventDefault();
+                            }
+                        });
+                    }
+
+                    function getCurrentDateParts() {
+                        const now = new Date();
+                        const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60 * 1000));
+                        return {
+                            date: localNow.toISOString().slice(0, 10),
+                            time: localNow.toISOString().slice(11, 16)
+                        };
+                    }
+
+                    function syncTimeLimit(dateInput, timeInput) {
+                        if (!dateInput || !timeInput) return;
+
+                        const { date, time } = getCurrentDateParts();
+                        const effectiveDate = dateInput.value || date;
+                        if (effectiveDate === date) {
+                            timeInput.max = time;
+                        } else {
+                            timeInput.removeAttribute("max");
+                        }
+                    }
+
+                    const expiresOnInput = document.getElementById("expiresOnInput");
+                    const expiresAtTimeInput = document.getElementById("expiresAtTimeInput");
+                    syncTimeLimit(expiresOnInput, expiresAtTimeInput);
+
+                    if (expiresOnInput && expiresAtTimeInput) {
+                        expiresOnInput.addEventListener("input", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
+                        expiresAtTimeInput.addEventListener("focus", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
+                    }
+
+                    document.querySelectorAll(".manage-url-form").forEach((form) => {
+                        const dateInput = form.querySelector('input[name="expiresOn"]');
+                        const timeInput = form.querySelector('input[name="expiresAtTime"]');
+
+                        syncTimeLimit(dateInput, timeInput);
+
+                        if (dateInput && timeInput) {
+                            dateInput.addEventListener("input", () => syncTimeLimit(dateInput, timeInput));
+                            timeInput.addEventListener("focus", () => syncTimeLimit(dateInput, timeInput));
+                        }
+                    });
+
+                    function setInputMode(input, forceNative) {
+                        if (!input) return;
+
+                        const nativeType = input.dataset.nativeType;
+                        if (!nativeType) return;
+
+                        const shouldUseNative = forceNative || Boolean(input.value);
+                        input.type = shouldUseNative ? nativeType : "text";
+                        input.placeholder = shouldUseNative ? "" : (input.dataset.emptyPlaceholder || "");
+                    }
+
+                    document.querySelectorAll(".smart-native-input").forEach((input) => {
+                        setInputMode(input, Boolean(input.value));
+
+                        input.addEventListener("focus", () => {
+                            setInputMode(input, true);
+                        });
+
+                        input.addEventListener("blur", () => {
+                            setInputMode(input, Boolean(input.value));
+                        });
+
+                        input.addEventListener("change", () => {
+                            setInputMode(input, Boolean(input.value));
+                        });
+                    });
+                </script>
 </body>
 
 </html>

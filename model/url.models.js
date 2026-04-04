@@ -8,11 +8,31 @@ const urlSchema = new mongoose.Schema({
     }, redirectUrl: {
         type: String,
         required: true,
+    }, expiresAt: {
+        type: Date,
+        default: null
+    }, isDisabled: {
+        type: Boolean,
+        default: false
+    }, disabledReason: {
+        type: String,
+        default: null
+    }, lastEditedAt: {
+        type: Date,
+        default: null
     }, visitHistory: [{
         timestamp: { type: Number },
         country: {
             type: String,
             default: "Unknown"
+        },
+        isBot: {
+            type: Boolean,
+            default: false
+        },
+        userAgent: {
+            type: String,
+            default: null
         }
     }], createdBy: {
         type: mongoose.Schema.Types.ObjectId,

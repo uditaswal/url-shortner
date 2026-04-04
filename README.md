@@ -2,7 +2,8 @@
 
 A full-stack URL shortener built with **Node.js, Express, MongoDB, and EJS**.
 
-This project feature includes:
+Main features:
+
 - guest mode URL creation
 - username-based authentication
 - private per-user dashboards
@@ -11,27 +12,29 @@ This project feature includes:
 - rate limiting and security hardening
 - integration testing
 
-
 ## Key Features
 
 ### URL Shortening
+
 - Create short URLs for long links
 - Reuse an existing short URL for duplicate submissions by the same owner
 - Public redirect support via short IDs
 - Validation for `http://` and `https://` URLs before storing
 
 ### Guest Mode
+
 - Guests can shorten URLs without creating an account
 - Guest-created links are not shown in a personal dashboard
 - UI clearly prompts guests to sign up or log in for dashboard access
 
 ### Authentication
-- Signup and login use a **unique username** instead of email
+
+- Signup and login use a **unique username**
 - Passwords are hashed with `bcrypt` before being stored
-- Legacy plain-text password login path was handled during transition
 - Auth is stored in an HTTP-only cookie using JWT
 
 ### User Dashboard
+
 - Logged-in users only see **their own URLs**
 - Dashboard supports:
   - search by short ID or original URL
@@ -45,6 +48,7 @@ This project feature includes:
   - country-based click stats
 
 ### Logging and Monitoring
+
 - Daily rotating log files with Winston
 - Structured JSON logs for:
   - app events
@@ -54,6 +58,7 @@ This project feature includes:
   - process-level failures
 
 ### Security
+
 - `helmet` for secure HTTP headers
 - `express-rate-limit` for auth and URL creation routes
 - input sanitization and validation
@@ -62,8 +67,9 @@ This project feature includes:
 - short ID validation before database queries
 
 ### Testing
-- Integration test flow covering one complete URL lifecycle
-- Validates:
+
+- Mongo-backed integration test covering one complete URL lifecycle
+- Covers:
   - guest home access
   - signup
   - login
@@ -115,7 +121,7 @@ Important variables:
 
 ```env
 PORT=3000
-APP_ENV=test
+APP_ENV=production
 
 TEST_DB_URL=mongodb://127.0.0.1:27017/
 TEST_DB_NAME=url-shortner

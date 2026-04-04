@@ -1,112 +1,59 @@
 import assert from "node:assert/strict";
-import bcrypt from "bcrypt";
+import mongoose from "mongoose";
 import request from "supertest";
 
-import { createApp } from "../app.js";
-import URL from "../model/url.models.js";
-import User from "../model/user.models.js";
+process.env.APP_ENV = "test";
+process.env.TEST_DB_NAME = process.env.TEST_DB_NAME || "url-shortner-integration";
+
+const [{ createApp }, { default: connectDB }, { default: UrlModel }, { default: User }, { default: RateLimitEntry }] = await Promise.all([
+    import("../app.js"),
+    import("../dbConnection.js"),
+    import("../model/url.models.js"),
+    import("../model/user.models.js"),
+    import("../model/rateLimitEntry.models.js")
+]);
 
 const SAMPLE_URL = "https://example.com/docs";
+const CUSTOM_SHORT_ID = `alias${Date.now().toString().slice(-6)}`;
+const UPDATED_CUSTOM_SHORT_ID = `${CUSTOM_SHORT_ID}_v2`;
+const TEST_USERNAME = `tester_${Date.now()}`;
+const TEST_DB_NAME = process.env.TEST_DB_NAME;
 
-function createUrlQueryResult(items) {
-    return {
-        sort: async () => items
-    };
+function toDateTimeLocalValue(date) {
+    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000));
+    return localDate.toISOString().slice(0, 16);
+}
+
+const EXPIRE_SOON = toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000));
+const [EXPIRE_SOON_DATE, EXPIRE_SOON_TIME] = EXPIRE_SOON.split("T");
+
+function buildDatabaseUrl(baseUrl, dbName) {
+    const trimmedBaseUrl = String(baseUrl || "").trim();
+    if (!trimmedBaseUrl) {
+        throw new Error("TEST_DB_URL is required for integration tests.");
+    }
+
+    const parsedUrl = new globalThis.URL(trimmedBaseUrl);
+    parsedUrl.pathname = `/${dbName}`;
+    return parsedUrl.toString();
+}
+
+async function resetDatabase() {
+    await Promise.all([
+        UrlModel.deleteMany({}),
+        User.deleteMany({}),
+        RateLimitEntry.deleteMany({})
+    ]);
 }
 
 async function run() {
-    const app = createApp();
-    const users = [];
-    const urls = [];
+    const dbUrl = buildDatabaseUrl(process.env.TEST_DB_URL, TEST_DB_NAME);
+    await connectDB(dbUrl, TEST_DB_NAME, "integration-test");
+    await resetDatabase();
 
-    const originalUserFindOne = User.findOne;
-    const originalUserCreate = User.create;
-    const originalUrlFind = URL.find;
-    const originalUrlFindOne = URL.findOne;
-    const originalUrlCreate = URL.create;
-    const originalUrlFindOneAndUpdate = URL.findOneAndUpdate;
+    const app = createApp();
 
     try {
-        User.findOne = async (query) => {
-            if (query.username) {
-                return users.find((user) => user.username === query.username) || null;
-            }
-
-            return null;
-        };
-
-        User.create = async ({ name, username, password }) => {
-            const hashedPassword = await bcrypt.hash(password, 10);
-            const user = {
-                _id: `user-${users.length + 1}`,
-                name,
-                username,
-                password: hashedPassword,
-                comparePassword(candidatePassword) {
-                    return bcrypt.compare(candidatePassword, this.password);
-                }
-            };
-
-            users.push(user);
-            return user;
-        };
-
-        URL.find = (query = {}) => {
-            if (query.createdBy) {
-                return createUrlQueryResult(urls.filter((item) => item.createdBy === query.createdBy));
-            }
-
-            return createUrlQueryResult(urls);
-        };
-
-        URL.findOne = async (query = {}) => {
-            if (query.shortId && query.createdBy) {
-                return urls.find((item) => item.shortId === query.shortId && item.createdBy === query.createdBy) || null;
-            }
-
-            if (query.shortId) {
-                return urls.find((item) => item.shortId === query.shortId) || null;
-            }
-
-            if (query.redirectUrl && Object.prototype.hasOwnProperty.call(query, "createdBy")) {
-                return urls.find((item) => item.redirectUrl === query.redirectUrl && item.createdBy === query.createdBy) || null;
-            }
-
-            if (query.redirectUrl) {
-                return urls.find((item) => item.redirectUrl === query.redirectUrl) || null;
-            }
-
-            return null;
-        };
-
-        URL.create = async ({ shortId, redirectUrl, visitHistory, createdBy }) => {
-            const entry = {
-                _id: `url-${urls.length + 1}`,
-                shortId,
-                redirectUrl,
-                visitHistory: visitHistory || [],
-                createdBy,
-                createdAt: new Date("2026-03-31T12:00:00.000Z")
-            };
-
-            urls.push(entry);
-            return entry;
-        };
-
-        URL.findOneAndUpdate = async ({ shortId }, update) => {
-            const entry = urls.find((item) => item.shortId === shortId);
-            if (!entry) {
-                return null;
-            }
-
-            const visit = update?.$push?.visitHistory;
-            if (visit) {
-                entry.visitHistory.push(visit);
-            }
-
-            return entry;
-        };
-
         await request(app)
             .get("/")
             .expect(200)
@@ -122,25 +69,31 @@ async function run() {
             })
             .expect(200);
 
-        assert.equal(urls.length, 1);
-        assert.equal(urls[0].createdBy, null);
+        const guestUrl = await UrlModel.findOne({ redirectUrl: SAMPLE_URL, createdBy: null });
+        assert.ok(guestUrl);
 
         await request(app)
             .post("/user")
             .type("form")
             .send({
                 name: "Test User",
-                username: "tester_01",
+                username: TEST_USERNAME,
                 password: "StrongPass1"
             })
             .expect(302)
             .expect("Location", "/");
 
+        const createdUser = await User.findOne({ username: TEST_USERNAME });
+        assert.ok(createdUser);
+        assert.match(createdUser.password, /^\$2[aby]\$\d{2}\$/);
+        createdUser.isAdmin = true;
+        await createdUser.save();
+
         const loginResponse = await request(app)
             .post("/user/login")
             .type("form")
             .send({
-                username: "tester_01",
+                username: TEST_USERNAME,
                 password: "StrongPass1"
             })
             .expect(302)
@@ -148,7 +101,7 @@ async function run() {
 
         const authCookie = loginResponse.headers["set-cookie"][0].split(";")[0];
 
-        const createResponse = await request(app)
+        await request(app)
             .post("/api")
             .set("Cookie", authCookie)
             .type("form")
@@ -157,14 +110,54 @@ async function run() {
             })
             .expect(200);
 
-        assert.match(createResponse.text, /Your URL Dashboard/);
-        assert.match(createResponse.text, /example\.com\/docs/);
-        assert.equal(urls.length, 2);
-
-        const userUrl = urls.find((entry) => entry.createdBy === "user-1");
+        const userUrl = await UrlModel.findOne({ redirectUrl: SAMPLE_URL, createdBy: createdUser._id });
         assert.ok(userUrl);
+        assert.notEqual(String(userUrl._id), String(guestUrl._id));
 
         const shortId = userUrl.shortId;
+
+        await request(app)
+            .post("/api")
+            .set("Cookie", authCookie)
+            .type("form")
+            .send({
+                url: "https://example.com/custom",
+                customShortId: CUSTOM_SHORT_ID,
+                expiresOn: EXPIRE_SOON_DATE,
+                expiresAtTime: EXPIRE_SOON_TIME
+            })
+            .expect(200)
+            .expect((response) => {
+                assert.match(response.text, new RegExp(CUSTOM_SHORT_ID));
+            });
+
+        const customUrl = await UrlModel.findOne({ shortId: CUSTOM_SHORT_ID, createdBy: createdUser._id });
+        assert.ok(customUrl);
+        assert.equal(customUrl.redirectUrl, "https://example.com/custom");
+        assert.ok(customUrl.expiresAt);
+
+        await request(app)
+            .post(`/api/manage/${CUSTOM_SHORT_ID}`)
+            .set("Cookie", authCookie)
+            .type("form")
+            .send({
+                customShortId: UPDATED_CUSTOM_SHORT_ID,
+                url: "https://example.com/custom-updated",
+                expiresOn: EXPIRE_SOON_DATE,
+                expiresAtTime: EXPIRE_SOON_TIME
+            })
+            .expect(200);
+
+        const updatedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID, createdBy: createdUser._id });
+        assert.ok(updatedCustomUrl);
+        assert.equal(updatedCustomUrl.redirectUrl, "https://example.com/custom-updated");
+
+        await request(app)
+            .get(`/${shortId}`)
+            .set("user-agent", "Googlebot/2.1")
+            .set("cf-ipcountry", "IN")
+            .expect(302)
+            .expect("Location", SAMPLE_URL);
 
         await request(app)
             .get(`/${shortId}`)
@@ -172,17 +165,23 @@ async function run() {
             .expect(302)
             .expect("Location", SAMPLE_URL);
 
-        assert.equal(userUrl.visitHistory.length, 1);
-        assert.equal(userUrl.visitHistory[0].country, "IN");
+        const updatedUrl = await UrlModel.findOne({ _id: userUrl._id });
+        assert.equal(updatedUrl.visitHistory.length, 2);
+        assert.equal(updatedUrl.visitHistory[0].isBot, true);
+        assert.equal(updatedUrl.visitHistory[1].country, "IN");
+        assert.equal(updatedUrl.visitHistory[1].isBot, false);
 
         await request(app)
             .get(`/api/analytics/${shortId}`)
             .set("Cookie", authCookie)
+            .set("Host", "sho.rt")
             .expect(200)
             .expect((response) => {
                 assert.equal(response.body.shortId, shortId);
                 assert.equal(response.body.redirectUrl, SAMPLE_URL);
+                assert.equal(response.body.shortUrl, `http://sho.rt/${shortId}`);
                 assert.equal(response.body.count, 1);
+                assert.equal(response.body.botVisits, 1);
             });
 
         await request(app)
@@ -191,9 +190,32 @@ async function run() {
             .expect(200)
             .expect((response) => {
                 assert.match(response.text, /Profile & URL Stats/);
-                assert.match(response.text, /Country Stats/);
-                assert.match(response.text, /IN/);
+                assert.match(response.text, /Bot Visits Filtered/);
+                assert.match(response.text, /Admin Moderation/);
             });
+
+        await request(app)
+            .post(`/api/admin/moderate/${shortId}`)
+            .set("Cookie", authCookie)
+            .type("form")
+            .send({
+                action: "disable",
+                disabledReason: "Abuse review"
+            })
+            .expect(302)
+            .expect("Location", "/profile");
+
+        await request(app)
+            .get(`/${shortId}`)
+            .expect(403);
+
+        await request(app)
+            .post(`/api/delete/${UPDATED_CUSTOM_SHORT_ID}`)
+            .set("Cookie", authCookie)
+            .expect(200);
+
+        const deletedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID });
+        assert.equal(deletedCustomUrl, null);
 
         await request(app)
             .post("/user/logout")
@@ -201,18 +223,25 @@ async function run() {
             .expect(302)
             .expect("Location", "/login");
 
-        console.log("Integration test passed: validated main endpoints with one URL flow.");
+        await request(app)
+            .get("/profile")
+            .set("Cookie", authCookie)
+            .expect(302)
+            .expect("Location", "/login");
+
+        console.log("Integration test passed: validated Mongo-backed URL flow end to end.");
     } finally {
-        User.findOne = originalUserFindOne;
-        User.create = originalUserCreate;
-        URL.find = originalUrlFind;
-        URL.findOne = originalUrlFindOne;
-        URL.create = originalUrlCreate;
-        URL.findOneAndUpdate = originalUrlFindOneAndUpdate;
+        await resetDatabase();
+        await mongoose.disconnect();
     }
 }
 
-run().catch((error) => {
+run().catch(async (error) => {
     console.error(error);
+
+    if (mongoose.connection.readyState !== 0) {
+        await mongoose.disconnect();
+    }
+
     process.exit(1);
 });
