@@ -1,5 +1,116 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title><%= typeof title !== "undefined" ? title : "URL Shortener" %></title>
+<title>
+    <%= typeof title !=="undefined" ? title : "URL Shortener" %>
+</title>
 <link rel="icon" type="image/png" href="/css/favicon.png">
 <link rel="stylesheet" href="/css/global.css">
+
+
+
+<style nonce="<%= cspNonce %>">
+    body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: radial-gradient(circle at top, #172554 0%, #0f172a 45%);
+        color: #e2e8f0;
+        min-height: 100vh;
+    }
+
+    a {
+        color: #38bdf8;
+        text-decoration: none;
+    }
+
+    .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid #334155;
+    }
+
+    .app-nav,
+    .container,
+    .narrow-container {
+        width: min(100%, 1000px);
+        margin: 0 auto;
+        padding-inline: 16px;
+    }
+
+    .app-nav {
+        padding-top: 14px;
+        padding-bottom: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .nav-links,
+    .header-user-area {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .app-main {
+        padding: 24px 0 16px;
+    }
+
+    .card {
+        background: linear-gradient(180deg, #1e293b 0%, #1b2438 100%);
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 18px;
+        margin-bottom: 20px;
+    }
+
+    .row-form,
+    .form-note-grid,
+    .guest-actions,
+    .footer-links {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .form-note-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    input,
+    select,
+    button {
+        font: inherit;
+    }
+
+    @media (max-width: 720px) {
+
+        .app-nav,
+        .header-user-area,
+        .nav-links,
+        .row-form,
+        .guest-actions,
+        .footer-links {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .form-note-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('click', (e) => {
+        document.querySelectorAll('details.mobile-menu[open]').forEach((el) => {
+            if (!el.contains(e.target)) el.removeAttribute('open');
+        });
+    });
+
+</script>

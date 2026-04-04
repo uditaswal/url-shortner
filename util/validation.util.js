@@ -28,6 +28,28 @@ export function normalizeUrlInput(value) {
     return sanitizeTextInput(value);
 }
 
+export function normalizeShortIdInput(value) {
+    return sanitizeTextInput(value);
+}
+
+export function normalizeDateTimeInput(value) {
+    return sanitizeTextInput(value);
+}
+
+export function parseExpirationInput(value) {
+    const normalizedValue = normalizeDateTimeInput(value);
+    if (!normalizedValue) {
+        return null;
+    }
+
+    const parsedDate = new Date(normalizedValue);
+    if (Number.isNaN(parsedDate.getTime())) {
+        return null;
+    }
+
+    return parsedDate;
+}
+
 export function validateHttpUrl(value) {
     try {
         const parsedUrl = new URL(value);

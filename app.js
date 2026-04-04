@@ -1,10 +1,11 @@
 import express from 'express';
 import helmet from 'helmet';
-import router from './routes/url.routes.js';
+import { apiRouter, redirectRouter } from './routes/url.routes.js';
 import staticRouter from './routes/static.routes.js';
 import userRouter from './routes/user.routes.js';
 import path from 'path'
 import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 import cookieParser from 'cookie-parser';
 import { checkAuth } from './middleware/auth.middleware.js';
 import requestLogger from './middleware/requestLogger.middleware.js';
@@ -23,12 +24,28 @@ export function createApp() {
     app.set("view engine", "ejs");
     app.set("views", path.join(__dirname, "views"));
 
+    app.use((req, res, next) => {
+        res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+        next();
+    });
+
     app.use(helmet({
-        contentSecurityPolicy: false
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", "data:"],
+                objectSrc: ["'none'"],
+                baseUri: ["'self'"],
+                frameAncestors: ["'none'"],
+                formAction: ["'self'"],
+                upgradeInsecureRequests: null
+            }
+        }
     }));
     app.use(express.static(path.join(__dirname, "public")));
     app.use(express.json());
-    app.use(express.static("public"));
     app.use(express.urlencoded({ extended: false }));
     app.use(cookieParser());
     app.use(checkAuth);
@@ -39,9 +56,9 @@ export function createApp() {
     });
 
     app.use('/', staticRouter);
-    app.use('/api', router);
+    app.use('/api', apiRouter);
     app.use('/user', userRouter);
-    app.use('/', router);
+    app.use('/', redirectRouter);
     app.use(errorHandler);
 
     return app;

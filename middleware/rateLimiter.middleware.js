@@ -1,4 +1,5 @@
 import rateLimit from "express-rate-limit";
+import MongoRateLimitStore from "../util/rateLimitStore.util.js";
 
 function buildRateLimitHandler(message) {
     return (req, res) => {
@@ -15,7 +16,9 @@ function buildRateLimitHandler(message) {
             values: {
                 name: typeof req.body?.name === "string" ? req.body.name : "",
                 username: typeof req.body?.username === "string" ? req.body.username : "",
-                url: typeof req.body?.url === "string" ? req.body.url : ""
+                url: typeof req.body?.url === "string" ? req.body.url : "",
+                customShortId: typeof req.body?.customShortId === "string" ? req.body.customShortId : "",
+                expiresAt: typeof req.body?.expiresAt === "string" ? req.body.expiresAt : ""
             },
             isGuestMode: !req.user,
             urls: []
@@ -23,11 +26,16 @@ function buildRateLimitHandler(message) {
     };
 }
 
+function buildStore(prefix) {
+    return new MongoRateLimitStore(prefix);
+}
+
 export const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 10,
     standardHeaders: true,
     legacyHeaders: false,
+    store: buildStore("auth"),
     handler: buildRateLimitHandler("Too many authentication attempts. Please try again in 15 minutes.")
 });
 
@@ -36,5 +44,6 @@ export const urlCreateRateLimiter = rateLimit({
     max: 30,
     standardHeaders: true,
     legacyHeaders: false,
+    store: buildStore("url-create"),
     handler: buildRateLimitHandler("Too many URL creation requests. Please slow down and try again shortly.")
 });

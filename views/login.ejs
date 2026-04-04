@@ -27,7 +27,7 @@
                         <label>Password</label>
                         <div class="password-field">
                             <input type="password" name="password" id="loginPassword" placeholder="********" autocomplete="current-password" required>
-                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">Show</button>
+                            <button type="button" class="password-toggle" data-password-target="loginPassword">Show</button>
                         </div>
                     </div>
 
@@ -43,15 +43,17 @@
 
     <%- include("partials/footer") %>
 
-    <script>
-        function togglePassword(inputId, button) {
-            const input = document.getElementById(inputId);
-            if (!input) return;
+    <script nonce="<%= cspNonce %>">
+        document.querySelectorAll(".password-toggle").forEach((button) => {
+            button.addEventListener("click", () => {
+                const input = document.getElementById(button.dataset.passwordTarget);
+                if (!input) return;
 
-            const isPassword = input.type === "password";
-            input.type = isPassword ? "text" : "password";
-            button.textContent = isPassword ? "Hide" : "Show";
-        }
+                const isPassword = input.type === "password";
+                input.type = isPassword ? "text" : "password";
+                button.textContent = isPassword ? "Hide" : "Show";
+            });
+        });
     </script>
 </body>
 

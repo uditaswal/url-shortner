@@ -1,5 +1,5 @@
 <header class="app-header">
-    <nav class="app-nav">
+    <nav class="app-nav desktop-nav">
         <a href="/" class="brand">URL Shortener</a>
         <% if (locals.user) { %>
             <div class="header-user-area">
@@ -8,11 +8,14 @@
                     <span class="profile-icon" aria-hidden="true">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
-                            <path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                            <path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" />
                         </svg>
                     </span>
                     <span class="profile-text">
-                        <span class="profile-name"><%= locals.user.name %></span>
+                        <span class="profile-name">
+                            <%= locals.user.name %>
+                        </span>
                         <span class="profile-email">@<%= locals.user.username %></span>
                     </span>
                 </a>
@@ -20,12 +23,50 @@
                     <button type="submit" class="logout-btn">Logout</button>
                 </form>
             </div>
-        <% } else { %>
-            <div class="nav-links">
-                <a href="/">Guest Mode</a>
-                <a href="/login">Login</a>
-                <a href="/user/signup">Signup</a>
-            </div>
-        <% } %>
+            <% } else { %>
+                <div class="nav-links">
+                    <a href="/">Guest Mode</a>
+                    <a href="/login">Login</a>
+                    <a href="/user/signup">Signup</a>
+                </div>
+                <% } %>
+    </nav>
+
+    <nav class="app-nav mobile-nav" aria-label="Mobile navigation">
+        <a href="/" class="brand">URL Shortener</a>
+        <div class="mobile-nav-actions">
+            <details class="mobile-menu">
+                <summary aria-label="Open menu">
+                    <span class="mobile-menu-dots" aria-hidden="true">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
+                </summary>
+                <div class="mobile-menu-panel">
+                    <% if (locals.user) { %>
+                        <a href="/">Home</a>
+                        <a href="/profile">Profile</a>
+                        <form action="/user/logout" method="POST" class="mobile-menu-form">
+                            <button type="submit" class="mobile-menu-button danger-text">Logout</button>
+                        </form>
+                        <% } else { %>
+                            <a href="/">Guest Mode</a>
+                            <a href="/login">Login</a>
+                            <a href="/user/signup">Signup</a>
+                            <% } %>
+                </div>
+            </details>
+        </div>
     </nav>
 </header>
+
+<script nonce="<%= cspNonce %>">
+    document.addEventListener("click", (event) => {
+        document.querySelectorAll("details.mobile-menu[open]").forEach((menu) => {
+            if (!menu.contains(event.target)) {
+                menu.removeAttribute("open");
+            }
+        });
+    });
+</script>
