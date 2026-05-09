@@ -11,8 +11,28 @@ import {
     validateHttpUrl
 } from "../util/validation.util.js";
 
+function isJsonRequest(req) {
+    return req.responseMode === "json";
+}
+
 function buildShortUrl(req, shortId) {
     return `${req.protocol}://${req.get("host")}/${shortId}`;
+}
+
+function buildUrlResponse(req, entry) {
+    return {
+        shortId: entry.shortId,
+        redirectUrl: entry.redirectUrl,
+        shortUrl: buildShortUrl(req, entry.shortId),
+        expiresAt: entry.expiresAt,
+        isDisabled: entry.isDisabled,
+        disabledReason: entry.disabledReason,
+        status: getUrlStatus(entry),
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt,
+        lastEditedAt: entry.lastEditedAt,
+        visitCount: (entry.visitHistory || []).filter((visit) => !visit.isBot).length
+    };
 }
 
 function getVisitorCountry(req) {
@@ -178,6 +198,12 @@ export async function generateShortId(req, res) {
             (req.body.expiresOn !== undefined && !isSafePlainInput(req.body.expiresOn)) ||
             (req.body.expiresAtTime !== undefined && !isSafePlainInput(req.body.expiresAtTime))
         ) {
+            if (isJsonRequest(req)) {
+                return res.status(400).json({
+                    error: "Invalid URL input."
+                });
+            }
+
             return renderHomeWithState(req, res, {
                 error: "Invalid URL input.",
                 values: {}
@@ -187,6 +213,12 @@ export async function generateShortId(req, res) {
         const payload = normalizeCreatePayload(req.body);
         const payloadError = validateCreatePayload(payload);
         if (payloadError) {
+            if (isJsonRequest(req)) {
+                return res.status(400).json({
+                    error: payloadError
+                });
+            }
+
             return renderHomeWithState(req, res, {
                 error: payloadError,
                 values: {
@@ -204,11 +236,25 @@ export async function generateShortId(req, res) {
 
         if (urlEntry) {
             if (payload.customShortId && urlEntry.shortId !== payload.customShortId) {
+                if (isJsonRequest(req)) {
+                    return res.status(409).json({
+                        error: `This URL already exists with short ID "${urlEntry.shortId}".`,
+                        url: buildUrlResponse(req, urlEntry)
+                    });
+                }
+
                 return renderHomeWithState(req, res, {
                     error: `This URL already exists with short ID "${urlEntry.shortId}".`,
                     values: payload,
                     url: buildShortUrl(req, urlEntry.shortId)
                 }, 409);
+            }
+
+            if (isJsonRequest(req)) {
+                return res.status(200).json({
+                    message: "Short URL already exists for this destination.",
+                    url: buildUrlResponse(req, urlEntry)
+                });
             }
 
             return renderHomeWithState(req, res, {
@@ -220,6 +266,12 @@ export async function generateShortId(req, res) {
         const shortId = payload.customShortId || nanoid(8);
         const existingShortId = await URL.findOne({ shortId });
         if (existingShortId) {
+            if (isJsonRequest(req)) {
+                return res.status(409).json({
+                    error: "That custom short ID is already taken. Try another one."
+                });
+            }
+
             return renderHomeWithState(req, res, {
                 error: "That custom short ID is already taken. Try another one.",
                 values: payload
@@ -233,6 +285,13 @@ export async function generateShortId(req, res) {
             visitHistory: [],
             createdBy: ownerId,
         });
+
+        if (isJsonRequest(req)) {
+            return res.status(201).json({
+                message: payload.expiresAt ? "Short URL created with expiration." : "Short URL created.",
+                url: buildUrlResponse(req, urlEntry)
+            });
+        }
 
         return renderHomeWithState(req, res, {
             successMessage: payload.expiresAt ? "Short URL created with expiration." : "Short URL created.",
@@ -248,6 +307,15 @@ export async function generateShortId(req, res) {
             });
 
             if (existingUrl) {
+                if (isJsonRequest(req)) {
+                    return res.status(payload.customShortId && existingUrl.shortId !== payload.customShortId ? 409 : 200).json({
+                        error: payload.customShortId && existingUrl.shortId !== payload.customShortId
+                            ? `This URL already exists with short ID "${existingUrl.shortId}".`
+                            : null,
+                        url: buildUrlResponse(req, existingUrl)
+                    });
+                }
+
                 return renderHomeWithState(req, res, {
                     error: payload.customShortId && existingUrl.shortId !== payload.customShortId
                         ? `This URL already exists with short ID "${existingUrl.shortId}".`
@@ -258,6 +326,12 @@ export async function generateShortId(req, res) {
             }
 
             if (payload.customShortId) {
+                if (isJsonRequest(req)) {
+                    return res.status(409).json({
+                        error: "That custom short ID is already taken. Try another one."
+                    });
+                }
+
                 return renderHomeWithState(req, res, {
                     error: "That custom short ID is already taken. Try another one.",
                     values: payload
@@ -272,6 +346,12 @@ export async function generateShortId(req, res) {
 export async function updateShortUrl(req, res) {
     const currentShortId = normalizeShortIdInput(req.params.shortId);
     if (!isValidShortId(currentShortId)) {
+        if (isJsonRequest(req)) {
+            return res.status(400).json({
+                error: "Invalid short URL."
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: "Invalid short URL."
         }, 400);
@@ -284,6 +364,12 @@ export async function updateShortUrl(req, res) {
 
     const payloadError = validateCreatePayload(payload);
     if (payloadError) {
+        if (isJsonRequest(req)) {
+            return res.status(400).json({
+                error: payloadError
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: payloadError,
             values: payload
@@ -292,6 +378,12 @@ export async function updateShortUrl(req, res) {
 
     const existingEntry = await URL.findOne(buildOwnerFilter(currentShortId, req));
     if (!existingEntry) {
+        if (isJsonRequest(req)) {
+            return res.status(404).json({
+                error: "Short URL not found."
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: "Short URL not found."
         }, 404);
@@ -302,6 +394,12 @@ export async function updateShortUrl(req, res) {
         _id: mongoose.trusted({ $ne: existingEntry._id })
     });
     if (duplicateAlias) {
+        if (isJsonRequest(req)) {
+            return res.status(409).json({
+                error: "That short ID is already taken. Try another one."
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: "That short ID is already taken. Try another one.",
             values: payload
@@ -314,6 +412,13 @@ export async function updateShortUrl(req, res) {
     existingEntry.lastEditedAt = new Date();
     await existingEntry.save();
 
+    if (isJsonRequest(req)) {
+        return res.status(200).json({
+            message: "Short URL updated successfully.",
+            url: buildUrlResponse(req, existingEntry)
+        });
+    }
+
     return renderHomeWithState(req, res, {
         successMessage: "Short URL updated successfully.",
         url: buildShortUrl(req, existingEntry.shortId),
@@ -324,6 +429,12 @@ export async function updateShortUrl(req, res) {
 export async function deleteShortUrl(req, res) {
     const shortId = normalizeShortIdInput(req.params.shortId);
     if (!isValidShortId(shortId)) {
+        if (isJsonRequest(req)) {
+            return res.status(400).json({
+                error: "Invalid short URL."
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: "Invalid short URL."
         }, 400);
@@ -331,9 +442,21 @@ export async function deleteShortUrl(req, res) {
 
     const deletedEntry = await URL.findOneAndDelete(buildOwnerFilter(shortId, req));
     if (!deletedEntry) {
+        if (isJsonRequest(req)) {
+            return res.status(404).json({
+                error: "Short URL not found."
+            });
+        }
+
         return renderHomeWithState(req, res, {
             error: "Short URL not found."
         }, 404);
+    }
+
+    if (isJsonRequest(req)) {
+        return res.status(200).json({
+            message: "Short URL deleted successfully."
+        });
     }
 
     return renderHomeWithState(req, res, {
@@ -347,6 +470,12 @@ export async function moderateShortUrl(req, res) {
     const disabledReason = normalizeUrlInput(req.body.disabledReason || "");
 
     if (!req.user?.isAdmin) {
+        if (isJsonRequest(req)) {
+            return res.status(403).json({
+                error: "Admin access required."
+            });
+        }
+
         return res.status(403).render("login", {
             error: "Admin access required."
         });
@@ -354,6 +483,12 @@ export async function moderateShortUrl(req, res) {
 
     const entry = await URL.findOne({ shortId });
     if (!entry) {
+        if (isJsonRequest(req)) {
+            return res.status(404).json({
+                error: "Short URL not found."
+            });
+        }
+
         return res.status(404).redirect("/profile");
     }
 
@@ -366,6 +501,14 @@ export async function moderateShortUrl(req, res) {
     }
 
     await entry.save();
+
+    if (isJsonRequest(req)) {
+        return res.status(200).json({
+            message: entry.isDisabled ? "Short URL disabled." : "Short URL enabled.",
+            url: buildUrlResponse(req, entry)
+        });
+    }
+
     return res.redirect("/profile");
 }
 

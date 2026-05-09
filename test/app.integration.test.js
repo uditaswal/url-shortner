@@ -62,6 +62,37 @@ async function run() {
             });
 
         await request(app)
+            .get("/ui")
+            .expect(200)
+            .expect((response) => {
+                assert.match(response.text, /Guest URL Shortener/);
+            });
+
+        await request(app)
+            .get("/ui/login")
+            .expect(200)
+            .expect((response) => {
+                assert.match(response.text, /Login/);
+            });
+
+        await request(app)
+            .get("/ui/signup")
+            .expect(200)
+            .expect((response) => {
+                assert.match(response.text, /Create Account/);
+            });
+
+        await request(app)
+            .post("/api/urls")
+            .send({
+                url: SAMPLE_URL
+            })
+            .expect(201)
+            .expect((response) => {
+                assert.equal(response.body.url.redirectUrl, SAMPLE_URL);
+            });
+
+        await request(app)
             .post("/api")
             .type("form")
             .send({
@@ -73,6 +104,18 @@ async function run() {
         assert.ok(guestUrl);
 
         await request(app)
+            .post("/api/auth/signup")
+            .send({
+                name: "Test User",
+                username: TEST_USERNAME,
+                password: "StrongPass1"
+            })
+            .expect(201)
+            .expect((response) => {
+                assert.equal(response.body.user.username, TEST_USERNAME);
+            });
+
+        await request(app)
             .post("/user")
             .type("form")
             .send({
@@ -80,8 +123,7 @@ async function run() {
                 username: TEST_USERNAME,
                 password: "StrongPass1"
             })
-            .expect(302)
-            .expect("Location", "/");
+            .expect(409);
 
         const createdUser = await User.findOne({ username: TEST_USERNAME });
         assert.ok(createdUser);
@@ -90,7 +132,28 @@ async function run() {
         await createdUser.save();
 
         const loginResponse = await request(app)
+            .post("/api/auth/login")
+            .send({
+                username: TEST_USERNAME,
+                password: "StrongPass1"
+            })
+            .expect(200)
+            .expect((response) => {
+                assert.equal(response.body.user.username, TEST_USERNAME);
+            });
+
+        await request(app)
             .post("/user/login")
+            .type("form")
+            .send({
+                username: TEST_USERNAME,
+                password: "StrongPass1"
+            })
+            .expect(302)
+            .expect("Location", "/");
+
+        await request(app)
+            .post("/ui/auth/login")
             .type("form")
             .send({
                 username: TEST_USERNAME,
@@ -102,13 +165,12 @@ async function run() {
         const authCookie = loginResponse.headers["set-cookie"][0].split(";")[0];
 
         await request(app)
-            .post("/api")
+            .post("/api/urls")
             .set("Cookie", authCookie)
-            .type("form")
             .send({
                 url: SAMPLE_URL
             })
-            .expect(200);
+            .expect(201);
 
         const userUrl = await UrlModel.findOne({ redirectUrl: SAMPLE_URL, createdBy: createdUser._id });
         assert.ok(userUrl);
@@ -117,18 +179,17 @@ async function run() {
         const shortId = userUrl.shortId;
 
         await request(app)
-            .post("/api")
+            .post("/api/urls")
             .set("Cookie", authCookie)
-            .type("form")
             .send({
                 url: "https://example.com/custom",
                 customShortId: CUSTOM_SHORT_ID,
                 expiresOn: EXPIRE_SOON_DATE,
                 expiresAtTime: EXPIRE_SOON_TIME
             })
-            .expect(200)
+            .expect(201)
             .expect((response) => {
-                assert.match(response.text, new RegExp(CUSTOM_SHORT_ID));
+                assert.equal(response.body.url.shortId, CUSTOM_SHORT_ID);
             });
 
         const customUrl = await UrlModel.findOne({ shortId: CUSTOM_SHORT_ID, createdBy: createdUser._id });
@@ -137,16 +198,18 @@ async function run() {
         assert.ok(customUrl.expiresAt);
 
         await request(app)
-            .post(`/api/manage/${CUSTOM_SHORT_ID}`)
+            .put(`/api/urls/${CUSTOM_SHORT_ID}`)
             .set("Cookie", authCookie)
-            .type("form")
             .send({
                 customShortId: UPDATED_CUSTOM_SHORT_ID,
                 url: "https://example.com/custom-updated",
                 expiresOn: EXPIRE_SOON_DATE,
                 expiresAtTime: EXPIRE_SOON_TIME
             })
-            .expect(200);
+            .expect(200)
+            .expect((response) => {
+                assert.equal(response.body.url.shortId, UPDATED_CUSTOM_SHORT_ID);
+            });
 
         const updatedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID, createdBy: createdUser._id });
         assert.ok(updatedCustomUrl);
@@ -172,7 +235,7 @@ async function run() {
         assert.equal(updatedUrl.visitHistory[1].isBot, false);
 
         await request(app)
-            .get(`/api/analytics/${shortId}`)
+            .get(`/api/urls/${shortId}/analytics`)
             .set("Cookie", authCookie)
             .set("Host", "sho.rt")
             .expect(200)
@@ -182,6 +245,15 @@ async function run() {
                 assert.equal(response.body.shortUrl, `http://sho.rt/${shortId}`);
                 assert.equal(response.body.count, 1);
                 assert.equal(response.body.botVisits, 1);
+            });
+
+        await request(app)
+            .get("/api/dashboard")
+            .set("Cookie", authCookie)
+            .expect(200)
+            .expect((response) => {
+                assert.ok(Array.isArray(response.body.urls));
+                assert.equal(response.body.isGuestMode, false);
             });
 
         await request(app)
@@ -195,22 +267,31 @@ async function run() {
             });
 
         await request(app)
-            .post(`/api/admin/moderate/${shortId}`)
+            .get("/ui/profile")
             .set("Cookie", authCookie)
-            .type("form")
+            .expect(200)
+            .expect((response) => {
+                assert.match(response.text, /Profile & URL Stats/);
+            });
+
+        await request(app)
+            .patch(`/api/admin/urls/${shortId}/moderation`)
+            .set("Cookie", authCookie)
             .send({
                 action: "disable",
                 disabledReason: "Abuse review"
             })
-            .expect(302)
-            .expect("Location", "/profile");
+            .expect(200)
+            .expect((response) => {
+                assert.equal(response.body.url.isDisabled, true);
+            });
 
         await request(app)
             .get(`/${shortId}`)
             .expect(403);
 
         await request(app)
-            .post(`/api/delete/${UPDATED_CUSTOM_SHORT_ID}`)
+            .delete(`/api/urls/${UPDATED_CUSTOM_SHORT_ID}`)
             .set("Cookie", authCookie)
             .expect(200);
 
@@ -218,10 +299,9 @@ async function run() {
         assert.equal(deletedCustomUrl, null);
 
         await request(app)
-            .post("/user/logout")
+            .post("/api/auth/logout")
             .set("Cookie", authCookie)
-            .expect(302)
-            .expect("Location", "/login");
+            .expect(200);
 
         await request(app)
             .get("/profile")

@@ -1,8 +1,8 @@
 import express from 'express';
 import helmet from 'helmet';
-import { apiRouter, redirectRouter } from './routes/url.routes.js';
-import staticRouter from './routes/static.routes.js';
-import userRouter from './routes/user.routes.js';
+import { apiRouter, legacyUrlRouter, redirectRouter, uiUrlRouter } from './routes/url.routes.js';
+import { apiStaticRouter, legacyStaticRouter, uiStaticRouter } from './routes/static.routes.js';
+import { apiUserRouter, legacyUserRouter, uiUserRouter } from './routes/user.routes.js';
 import path from 'path'
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
@@ -55,9 +55,15 @@ export function createApp() {
         next();
     });
 
-    app.use('/', staticRouter);
     app.use('/api', apiRouter);
-    app.use('/user', userRouter);
+    app.use('/api', apiUserRouter);
+    app.use('/api', apiStaticRouter);
+    app.use('/ui', uiStaticRouter);
+    app.use('/ui', uiUrlRouter);
+    app.use('/ui', uiUserRouter);
+    app.use('/', legacyStaticRouter);
+    app.use('/', legacyUserRouter);
+    app.use('/', legacyUrlRouter);
     app.use('/', redirectRouter);
     app.use(errorHandler);
 

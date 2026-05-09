@@ -146,7 +146,7 @@
                                         <td><%= item.statusLabel %></td>
                                         <td><%= item.disabledReason || "-" %></td>
                                         <td>
-                                            <form method="POST" action="/api/admin/moderate/<%= item.shortId %>">
+                                            <form method="POST" action="/ui/admin/urls/<%= item.shortId %>/moderation">
                                                 <input type="hidden" name="action" value="<%= item.isDisabled ? 'enable' : 'disable' %>">
                                                 <input type="text" name="disabledReason" placeholder="Moderation reason">
                                                 <button type="submit"><%= item.isDisabled ? "Enable" : "Disable" %></button>

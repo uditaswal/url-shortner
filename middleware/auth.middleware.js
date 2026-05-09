@@ -1,6 +1,30 @@
 import User from "../model/user.models.js";
 import { getUser } from "../util/auth.util.js";
 
+function sendAuthRequired(req, res) {
+    if (req.responseMode === "json") {
+        return res.status(401).json({
+            error: "Authentication required."
+        });
+    }
+
+    return res.status(401).render("login", {
+        error: "Authentication required."
+    });
+}
+
+function sendAdminRequired(req, res) {
+    if (req.responseMode === "json") {
+        return res.status(403).json({
+            error: "Admin access required."
+        });
+    }
+
+    return res.status(403).render("login", {
+        error: "Admin access required."
+    });
+}
+
 async function resolveAuthenticatedUser(token) {
     const payload = getUser(token);
     if (!payload?._id) {
@@ -25,13 +49,13 @@ async function resolveAuthenticatedUser(token) {
     };
 }
 
-export async function restrictToLogginUserOnly(req, res, next) {
+export async function restrictToLoginUserOnly(req, res, next) {
     const userUid = req.cookies?.uid;
-    if (!userUid) return res.redirect('/login');
+    if (!userUid) return sendAuthRequired(req, res);
 
     const user = await resolveAuthenticatedUser(userUid);
 
-    if (!user) return res.redirect("/login");
+    if (!user) return sendAuthRequired(req, res);
     req.user = user;
     next();
 }
@@ -47,13 +71,11 @@ export async function checkAuth(req, res, next) {
 
 export async function restrictToAdminOnly(req, res, next) {
     const userUid = req.cookies?.uid;
-    if (!userUid) return res.redirect("/login");
+    if (!userUid) return sendAuthRequired(req, res);
 
     const user = await resolveAuthenticatedUser(userUid);
     if (!user?.isAdmin) {
-        return res.status(403).render("login", {
-            error: "Admin access required."
-        });
+        return sendAdminRequired(req, res);
     }
 
     req.user = user;
