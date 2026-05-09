@@ -15,8 +15,14 @@ const legacyStaticRouter = express.Router();
 
 function getDashboardState(query = {}) {
     const search = typeof query.search === "string" ? query.search.trim().toLowerCase() : "";
-    const status = ["all", "active", "inactive", "expired", "disabled"].includes(query.status) ? query.status : "all";
-    const sortBy = ["createdAt", "clicks", "shortId", "redirectUrl", "expiresAt"].includes(query.sortBy) ? query.sortBy : "createdAt";
+    const status = ["all", "active", "inactive", "expired", "disabled"].includes(query.status)
+        ? query.status
+        : "all";
+    const sortBy = ["createdAt", "clicks", "shortId", "redirectUrl", "expiresAt"].includes(
+        query.sortBy
+    )
+        ? query.sortBy
+        : "createdAt";
     const order = query.order === "asc" ? "asc" : "desc";
 
     return { search, status, sortBy, order };
@@ -46,14 +52,19 @@ function applyDashboardFilters(urls, filters) {
     let items = [...urls];
 
     if (filters.search) {
-        items = items.filter((item) =>
-            item.shortId?.toLowerCase().includes(filters.search) ||
-            item.redirectUrl?.toLowerCase().includes(filters.search)
+        items = items.filter(
+            (item) =>
+                item.shortId?.toLowerCase().includes(filters.search) ||
+                item.redirectUrl?.toLowerCase().includes(filters.search)
         );
     }
 
     if (filters.status === "inactive") {
-        items = items.filter((item) => item.statusLabel === "active" && ((item.visitHistory || []).filter((visit) => !visit.isBot).length === 0));
+        items = items.filter(
+            (item) =>
+                item.statusLabel === "active" &&
+                (item.visitHistory || []).filter((visit) => !visit.isBot).length === 0
+        );
     } else if (filters.status !== "all") {
         items = items.filter((item) => item.statusLabel === filters.status);
     }
@@ -99,10 +110,18 @@ async function renderDashboard(req, res) {
 }
 
 async function getProfilePayload(req) {
-    const userUrls = (await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })).map(toDashboardItem);
+    const userUrls = (await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })).map(
+        toDashboardItem
+    );
     const totalUrls = userUrls.length;
-    const totalClicks = userUrls.reduce((sum, item) => sum + (item.visitHistory?.filter((visit) => !visit.isBot).length || 0), 0);
-    const botFilteredClicks = userUrls.reduce((sum, item) => sum + (item.visitHistory?.filter((visit) => visit.isBot).length || 0), 0);
+    const totalClicks = userUrls.reduce(
+        (sum, item) => sum + (item.visitHistory?.filter((visit) => !visit.isBot).length || 0),
+        0
+    );
+    const botFilteredClicks = userUrls.reduce(
+        (sum, item) => sum + (item.visitHistory?.filter((visit) => visit.isBot).length || 0),
+        0
+    );
     const activeUrls = userUrls.filter((item) => item.statusLabel === "active").length;
     const countryStatsMap = new Map();
 
@@ -122,17 +141,19 @@ async function getProfilePayload(req) {
         .sort((a, b) => b.clicks - a.clicks);
 
     const flaggedUrls = req.user.isAdmin
-        ? (await URL.find({
-            $or: [
-                { isDisabled: true },
-                {
-                    expiresAt: mongoose.trusted({
-                        $ne: null,
-                        $lte: new Date()
-                    })
-                }
-            ]
-        }).sort({ updatedAt: -1 })).map(toDashboardItem)
+        ? (
+              await URL.find({
+                  $or: [
+                      { isDisabled: true },
+                      {
+                          expiresAt: mongoose.trusted({
+                              $ne: null,
+                              $lte: new Date()
+                          })
+                      }
+                  ]
+              }).sort({ updatedAt: -1 })
+          ).map(toDashboardItem)
         : [];
 
     return {
@@ -144,7 +165,7 @@ async function getProfilePayload(req) {
         },
         urls: userUrls,
         countryStats,
-        flaggedUrls,
+        flaggedUrls
     };
 }
 

@@ -79,8 +79,8 @@ export function logHttpRequest(req, res, durationMs, response = null) {
         response,
         user: req.user
             ? {
-                id: req.user._id || req.user.id || null
-            }
+                  id: req.user._id || req.user.id || null
+              }
             : null
     });
 }
@@ -89,14 +89,14 @@ export function logError(error, context = {}) {
     const normalizedError =
         error instanceof Error
             ? {
-                name: error.name,
-                message: error.message,
-                stack: error.stack
-            }
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack
+              }
             : {
-                message: typeof error === "string" ? error : "Unknown error",
-                details: serializeValue(error)
-            };
+                  message: typeof error === "string" ? error : "Unknown error",
+                  details: serializeValue(error)
+              };
 
     logger.log({
         level: "error",

@@ -1,7 +1,11 @@
 import { logError } from "../util/logger.util.js";
 
 function isApiRequest(req) {
-    return req.originalUrl.startsWith("/api") || req.xhr || req.get("accept")?.includes("application/json");
+    return (
+        req.originalUrl.startsWith("/api") ||
+        req.xhr ||
+        req.get("accept")?.includes("application/json")
+    );
 }
 
 const errorHandler = (err, req, res, next) => {

@@ -1,5 +1,5 @@
 import User from "../model/user.models.js";
-import { getAuthCookieOptions, removeUser, setUser } from '../util/auth.util.js'
+import { getAuthCookieOptions, removeUser, setUser } from "../util/auth.util.js";
 import {
     isSafePlainInput,
     isStrongPassword,
@@ -41,7 +41,11 @@ function renderLogin(res, values = {}, error = null, statusCode = 400) {
 }
 
 export async function handleUserSignup(req, res) {
-    if (!isSafePlainInput(req.body.name) || !isSafePlainInput(req.body.username) || !isSafePlainInput(req.body.password)) {
+    if (
+        !isSafePlainInput(req.body.name) ||
+        !isSafePlainInput(req.body.username) ||
+        !isSafePlainInput(req.body.password)
+    ) {
         if (isJsonRequest(req)) {
             return res.status(400).json({ error: "Invalid input format." });
         }

@@ -51,7 +51,9 @@ function getVisitorCountry(req) {
 
 function isBotRequest(req) {
     const userAgent = req.get("user-agent") || "";
-    return /(bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|discord|telegram|linkedinbot)/i.test(userAgent);
+    return /(bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|discord|telegram|linkedinbot)/i.test(
+        userAgent
+    );
 }
 
 function isExpired(entry) {
@@ -82,16 +84,12 @@ function buildEditableValues(entry) {
         customShortId: entry?.shortId || "",
         expiresAt: expirationDate ? expirationDate.toISOString().slice(0, 16) : "",
         expiresOn: expirationDate ? expirationDate.toISOString().slice(0, 10) : "",
-        expiresAtTime: expirationDate
-            ? expirationDate.toISOString().slice(11, 16)
-            : ""
+        expiresAtTime: expirationDate ? expirationDate.toISOString().slice(11, 16) : ""
     };
 }
 
 function buildOwnerFilter(shortId, req) {
-    return req.user?.isAdmin
-        ? { shortId }
-        : { shortId, createdBy: req.user?._id };
+    return req.user?.isAdmin ? { shortId } : { shortId, createdBy: req.user?._id };
 }
 
 async function loadDashboardUrls(req) {
@@ -182,7 +180,10 @@ function validateCreatePayload(payload) {
         }
     }
 
-    if (payload.expiresAtInput && (!payload.expiresAt || payload.expiresAt.getTime() <= Date.now())) {
+    if (
+        payload.expiresAtInput &&
+        (!payload.expiresAt || payload.expiresAt.getTime() <= Date.now())
+    ) {
         return "Expiration must be a valid future date and time.";
     }
 
@@ -204,10 +205,15 @@ export async function generateShortId(req, res) {
                 });
             }
 
-            return renderHomeWithState(req, res, {
-                error: "Invalid URL input.",
-                values: {}
-            }, 400);
+            return renderHomeWithState(
+                req,
+                res,
+                {
+                    error: "Invalid URL input.",
+                    values: {}
+                },
+                400
+            );
         }
 
         const payload = normalizeCreatePayload(req.body);
@@ -219,16 +225,21 @@ export async function generateShortId(req, res) {
                 });
             }
 
-            return renderHomeWithState(req, res, {
-                error: payloadError,
-                values: {
-                    url: payload.url,
-                    customShortId: payload.customShortId,
-                    expiresAt: payload.expiresAtInput,
-                    expiresOn: payload.expiresOnInput,
-                    expiresAtTime: payload.expiresAtTimeInput
-                }
-            }, 400);
+            return renderHomeWithState(
+                req,
+                res,
+                {
+                    error: payloadError,
+                    values: {
+                        url: payload.url,
+                        customShortId: payload.customShortId,
+                        expiresAt: payload.expiresAtInput,
+                        expiresOn: payload.expiresOnInput,
+                        expiresAtTime: payload.expiresAtTimeInput
+                    }
+                },
+                400
+            );
         }
 
         const ownerId = getOwnerId(req);
@@ -243,11 +254,16 @@ export async function generateShortId(req, res) {
                     });
                 }
 
-                return renderHomeWithState(req, res, {
-                    error: `This URL already exists with short ID "${urlEntry.shortId}".`,
-                    values: payload,
-                    url: buildShortUrl(req, urlEntry.shortId)
-                }, 409);
+                return renderHomeWithState(
+                    req,
+                    res,
+                    {
+                        error: `This URL already exists with short ID "${urlEntry.shortId}".`,
+                        values: payload,
+                        url: buildShortUrl(req, urlEntry.shortId)
+                    },
+                    409
+                );
             }
 
             if (isJsonRequest(req)) {
@@ -272,10 +288,15 @@ export async function generateShortId(req, res) {
                 });
             }
 
-            return renderHomeWithState(req, res, {
-                error: "That custom short ID is already taken. Try another one.",
-                values: payload
-            }, 409);
+            return renderHomeWithState(
+                req,
+                res,
+                {
+                    error: "That custom short ID is already taken. Try another one.",
+                    values: payload
+                },
+                409
+            );
         }
 
         urlEntry = await URL.create({
@@ -283,18 +304,22 @@ export async function generateShortId(req, res) {
             redirectUrl: payload.url,
             expiresAt: payload.expiresAt,
             visitHistory: [],
-            createdBy: ownerId,
+            createdBy: ownerId
         });
 
         if (isJsonRequest(req)) {
             return res.status(201).json({
-                message: payload.expiresAt ? "Short URL created with expiration." : "Short URL created.",
+                message: payload.expiresAt
+                    ? "Short URL created with expiration."
+                    : "Short URL created.",
                 url: buildUrlResponse(req, urlEntry)
             });
         }
 
         return renderHomeWithState(req, res, {
-            successMessage: payload.expiresAt ? "Short URL created with expiration." : "Short URL created.",
+            successMessage: payload.expiresAt
+                ? "Short URL created with expiration."
+                : "Short URL created.",
             url: buildShortUrl(req, urlEntry.shortId),
             values: buildEditableValues(urlEntry)
         });
@@ -308,18 +333,27 @@ export async function generateShortId(req, res) {
 
             if (existingUrl) {
                 if (isJsonRequest(req)) {
-                    return res.status(payload.customShortId && existingUrl.shortId !== payload.customShortId ? 409 : 200).json({
-                        error: payload.customShortId && existingUrl.shortId !== payload.customShortId
-                            ? `This URL already exists with short ID "${existingUrl.shortId}".`
-                            : null,
-                        url: buildUrlResponse(req, existingUrl)
-                    });
+                    return res
+                        .status(
+                            payload.customShortId && existingUrl.shortId !== payload.customShortId
+                                ? 409
+                                : 200
+                        )
+                        .json({
+                            error:
+                                payload.customShortId &&
+                                existingUrl.shortId !== payload.customShortId
+                                    ? `This URL already exists with short ID "${existingUrl.shortId}".`
+                                    : null,
+                            url: buildUrlResponse(req, existingUrl)
+                        });
                 }
 
                 return renderHomeWithState(req, res, {
-                    error: payload.customShortId && existingUrl.shortId !== payload.customShortId
-                        ? `This URL already exists with short ID "${existingUrl.shortId}".`
-                        : null,
+                    error:
+                        payload.customShortId && existingUrl.shortId !== payload.customShortId
+                            ? `This URL already exists with short ID "${existingUrl.shortId}".`
+                            : null,
                     url: buildShortUrl(req, existingUrl.shortId),
                     values: buildEditableValues(existingUrl)
                 });
@@ -332,10 +366,15 @@ export async function generateShortId(req, res) {
                     });
                 }
 
-                return renderHomeWithState(req, res, {
-                    error: "That custom short ID is already taken. Try another one.",
-                    values: payload
-                }, 409);
+                return renderHomeWithState(
+                    req,
+                    res,
+                    {
+                        error: "That custom short ID is already taken. Try another one.",
+                        values: payload
+                    },
+                    409
+                );
             }
         }
 
@@ -352,9 +391,14 @@ export async function updateShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: "Invalid short URL."
-        }, 400);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: "Invalid short URL."
+            },
+            400
+        );
     }
 
     const payload = normalizeCreatePayload(req.body);
@@ -370,10 +414,15 @@ export async function updateShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: payloadError,
-            values: payload
-        }, 400);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: payloadError,
+                values: payload
+            },
+            400
+        );
     }
 
     const existingEntry = await URL.findOne(buildOwnerFilter(currentShortId, req));
@@ -384,9 +433,14 @@ export async function updateShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: "Short URL not found."
-        }, 404);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: "Short URL not found."
+            },
+            404
+        );
     }
 
     const duplicateAlias = await URL.findOne({
@@ -400,10 +454,15 @@ export async function updateShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: "That short ID is already taken. Try another one.",
-            values: payload
-        }, 409);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: "That short ID is already taken. Try another one.",
+                values: payload
+            },
+            409
+        );
     }
 
     existingEntry.shortId = payload.customShortId;
@@ -435,9 +494,14 @@ export async function deleteShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: "Invalid short URL."
-        }, 400);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: "Invalid short URL."
+            },
+            400
+        );
     }
 
     const deletedEntry = await URL.findOneAndDelete(buildOwnerFilter(shortId, req));
@@ -448,9 +512,14 @@ export async function deleteShortUrl(req, res) {
             });
         }
 
-        return renderHomeWithState(req, res, {
-            error: "Short URL not found."
-        }, 404);
+        return renderHomeWithState(
+            req,
+            res,
+            {
+                error: "Short URL not found."
+            },
+            404
+        );
     }
 
     if (isJsonRequest(req)) {
@@ -513,85 +582,77 @@ export async function moderateShortUrl(req, res) {
 }
 
 export async function redirectToShortURL(req, res) {
-    try {
-        const shortId = normalizeUrlInput(req.params.shortId);
-        if (!isValidShortId(shortId)) {
-            return res.status(400).json({
-                error: "Invalid short URL."
-            });
-        }
-
-        const entry = await URL.findOne({ shortId });
-
-        if (!entry) {
-            return res.status(404).json({
-                error: "Short URL not found"
-            });
-        }
-
-        if (entry.isDisabled) {
-            return res.status(403).json({
-                error: entry.disabledReason || "Short URL has been disabled."
-            });
-        }
-
-        if (isExpired(entry)) {
-            return res.status(410).json({
-                error: "Short URL has expired."
-            });
-        }
-
-        await URL.findOneAndUpdate(
-            { shortId },
-            {
-                $push: {
-                    visitHistory: {
-                        timestamp: Date.now(),
-                        country: getVisitorCountry(req),
-                        isBot: isBotRequest(req),
-                        userAgent: req.get("user-agent") || null
-                    }
-                },
-            }
-        );
-
-        return res.redirect(entry.redirectUrl);
-    } catch (err) {
-        throw err;
+    const shortId = normalizeUrlInput(req.params.shortId);
+    if (!isValidShortId(shortId)) {
+        return res.status(400).json({
+            error: "Invalid short URL."
+        });
     }
+
+    const entry = await URL.findOne({ shortId });
+
+    if (!entry) {
+        return res.status(404).json({
+            error: "Short URL not found"
+        });
+    }
+
+    if (entry.isDisabled) {
+        return res.status(403).json({
+            error: entry.disabledReason || "Short URL has been disabled."
+        });
+    }
+
+    if (isExpired(entry)) {
+        return res.status(410).json({
+            error: "Short URL has expired."
+        });
+    }
+
+    await URL.findOneAndUpdate(
+        { shortId },
+        {
+            $push: {
+                visitHistory: {
+                    timestamp: Date.now(),
+                    country: getVisitorCountry(req),
+                    isBot: isBotRequest(req),
+                    userAgent: req.get("user-agent") || null
+                }
+            }
+        }
+    );
+
+    return res.redirect(entry.redirectUrl);
 }
 
 export async function getShortURLAnalytics(req, res) {
-    try {
-        const shortId = normalizeUrlInput(req.params.shortId);
-        if (!isValidShortId(shortId)) {
-            return res.status(400).json({
-                error: "Invalid short URL."
-            });
-        }
-
-        const entry = await URL.findOne({ shortId, createdBy: req.user._id });
-        if (!entry) {
-            return res.status(404).json({
-                error: "Short URL not found"
-            });
-        }
-
-        const botVisits = entry.visitHistory.filter((visit) => visit.isBot).length;
-        const nonBotVisits = entry.visitHistory.length - botVisits;
-
-        return res.json({
-            shortId,
-            redirectUrl: entry.redirectUrl,
-            shortUrl: buildShortUrl(req, shortId),
-            count: nonBotVisits,
-            totalVisitsIncludingBots: entry.visitHistory.length,
-            botVisits,
-            status: getUrlStatus(entry),
-            expiresAt: entry.expiresAt,
-            visitHistory: entry.visitHistory
+    const shortId = normalizeUrlInput(req.params.shortId);
+    if (!isValidShortId(shortId)) {
+        return res.status(400).json({
+            error: "Invalid short URL."
         });
-    } catch (err) {
-        throw err;
     }
+
+    const entry = await URL.findOne({ shortId, createdBy: req.user._id });
+    if (!entry) {
+        return res.status(404).json({
+            error: "Short URL not found"
+        });
+    }
+
+    const botVisits = entry.visitHistory.filter((visit) => visit.isBot).length;
+    const nonBotVisits = entry.visitHistory.length - botVisits;
+
+    return res.json({
+        shortId,
+        redirectUrl: entry.redirectUrl,
+        shortUrl: buildShortUrl(req, shortId),
+        count: nonBotVisits,
+        totalVisitsIncludingBots: entry.visitHistory.length,
+        botVisits,
+        status: getUrlStatus(entry),
+        expiresAt: entry.expiresAt,
+        visitHistory: entry.visitHistory
+    });
 }

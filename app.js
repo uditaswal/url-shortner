@@ -1,19 +1,19 @@
-import express from 'express';
-import helmet from 'helmet';
-import { apiRouter, legacyUrlRouter, redirectRouter, uiUrlRouter } from './routes/url.routes.js';
-import { apiStaticRouter, legacyStaticRouter, uiStaticRouter } from './routes/static.routes.js';
-import { apiUserRouter, legacyUserRouter, uiUserRouter } from './routes/user.routes.js';
-import path from 'path'
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
-import cookieParser from 'cookie-parser';
-import { checkAuth } from './middleware/auth.middleware.js';
-import requestLogger from './middleware/requestLogger.middleware.js';
-import errorHandler from './middleware/errorHandler.middleware.js';
-import { installConsoleLogger, installProcessErrorHandlers } from "./util/logger.util.js"
+import express from "express";
+import helmet from "helmet";
+import { apiRouter, legacyUrlRouter, redirectRouter, uiUrlRouter } from "./routes/url.routes.js";
+import { apiStaticRouter, legacyStaticRouter, uiStaticRouter } from "./routes/static.routes.js";
+import { apiUserRouter, legacyUserRouter, uiUserRouter } from "./routes/user.routes.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import crypto from "crypto";
+import cookieParser from "cookie-parser";
+import { checkAuth } from "./middleware/auth.middleware.js";
+import requestLogger from "./middleware/requestLogger.middleware.js";
+import errorHandler from "./middleware/errorHandler.middleware.js";
+import { installConsoleLogger, installProcessErrorHandlers } from "./util/logger.util.js";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename)
+const __dirname = path.dirname(__filename);
 
 installConsoleLogger();
 installProcessErrorHandlers();
@@ -29,21 +29,23 @@ export function createApp() {
         next();
     });
 
-    app.use(helmet({
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
-                styleSrc: ["'self'", "'unsafe-inline'"],
-                imgSrc: ["'self'", "data:"],
-                objectSrc: ["'none'"],
-                baseUri: ["'self'"],
-                frameAncestors: ["'none'"],
-                formAction: ["'self'"],
-                upgradeInsecureRequests: null
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+                    styleSrc: ["'self'", "'unsafe-inline'"],
+                    imgSrc: ["'self'", "data:"],
+                    objectSrc: ["'none'"],
+                    baseUri: ["'self'"],
+                    frameAncestors: ["'none'"],
+                    formAction: ["'self'"],
+                    upgradeInsecureRequests: null
+                }
             }
-        }
-    }));
+        })
+    );
     app.use(express.static(path.join(__dirname, "public")));
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
@@ -55,16 +57,16 @@ export function createApp() {
         next();
     });
 
-    app.use('/api', apiRouter);
-    app.use('/api', apiUserRouter);
-    app.use('/api', apiStaticRouter);
-    app.use('/ui', uiStaticRouter);
-    app.use('/ui', uiUrlRouter);
-    app.use('/ui', uiUserRouter);
-    app.use('/', legacyStaticRouter);
-    app.use('/', legacyUserRouter);
-    app.use('/', legacyUrlRouter);
-    app.use('/', redirectRouter);
+    app.use("/api", apiRouter);
+    app.use("/api", apiUserRouter);
+    app.use("/api", apiStaticRouter);
+    app.use("/ui", uiStaticRouter);
+    app.use("/ui", uiUrlRouter);
+    app.use("/ui", uiUserRouter);
+    app.use("/", legacyStaticRouter);
+    app.use("/", legacyUserRouter);
+    app.use("/", legacyUrlRouter);
+    app.use("/", redirectRouter);
     app.use(errorHandler);
 
     return app;

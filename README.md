@@ -94,7 +94,7 @@ test/         Integration test coverage
 ### 1. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Configure environment variables
@@ -105,12 +105,12 @@ Use [`.env.example`](./.env.example) as the baseline.
 PORT=3000
 APP_ENV=production
 
-TEST_DB_URL=mongodb://127.0.0.1:27017/
+TEST_DB_URL=<endpoint>
 TEST_DB_NAME=url-shortner
 TEST_DB_ACCOUNT=local-test-user
 TEST_JWT_SECRET_KEY=your-secret
 
-PROD_DB_URL=mongodb://127.0.0.1:27017/
+PROD_DB_URL=<endpoint>
 PROD_DB_NAME=url-shortner-prod
 PROD_DB_ACCOUNT=local-prod-user
 PROD_JWT_SECRET_KEY=your-production-secret
@@ -130,7 +130,7 @@ npm test
 
 ## API Documentation
 
-Swagger UI is available at [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs).
+Swagger UI is available at [http://domain/api/api-docs](http://domain/api/api-docs).
 
 The documented API covers:
 
@@ -142,12 +142,12 @@ The documented API covers:
 Example health check:
 
 ```bash
-curl http://localhost:3000/api/health
+curl <url>/api/health
 ```
 
 ```json
 {
-  "status": "UP",
-  "timestamp": "2026-05-09T12:00:00.000Z"
+    "status": "UP",
+    "timestamp": "2026-05-09T12:00:00.000Z"
 }
 ```
