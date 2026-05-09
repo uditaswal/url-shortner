@@ -119,13 +119,13 @@ PROD_JWT_SECRET_KEY=your-production-secret
 ### 3. Start the app
 
 ```bash
-npm start
+pnpm start
 ```
 
 ### 4. Run the integration test
 
 ```bash
-npm test
+pnpm test
 ```
 
 ## API Documentation
