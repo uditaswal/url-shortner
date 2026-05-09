@@ -45,8 +45,7 @@ const requestLogger = (req, res, next) => {
     };
 
     res.render = (view, locals, callback) => {
-        const resolvedLocals =
-            typeof locals === "function" || locals === undefined ? null : locals;
+        const resolvedLocals = typeof locals === "function" || locals === undefined ? null : locals;
 
         responsePayload = {
             type: "view",

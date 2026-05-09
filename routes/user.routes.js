@@ -1,5 +1,9 @@
 import express from "express";
-import { handleUserLogin, handleUserLogout, handleUserSignup } from "../controller/user.controller.js";
+import {
+    handleUserLogin,
+    handleUserLogout,
+    handleUserSignup
+} from "../controller/user.controller.js";
 import { authRateLimiter } from "../middleware/rateLimiter.middleware.js";
 
 function asJson(req, _res, next) {

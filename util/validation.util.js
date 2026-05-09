@@ -3,9 +3,12 @@ export function sanitizeTextInput(value) {
         return "";
     }
 
-    return value
-        .replace(/[\u0000-\u001F\u007F]/g, "")
-        .trim();
+    return (
+        value
+            // eslint-disable-next-line no-control-regex
+            .replace(/[\u0000-\u001F\u007F]/g, "")
+            .trim()
+    );
 }
 
 export function isSafePlainInput(value) {

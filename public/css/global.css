@@ -75,7 +75,10 @@ body::after {
 a {
     color: var(--primary-strong);
     text-decoration: none;
-    transition: color 0.22s ease, opacity 0.22s ease, transform 0.22s ease;
+    transition:
+        color 0.22s ease,
+        opacity 0.22s ease,
+        transform 0.22s ease;
 }
 
 a:hover {

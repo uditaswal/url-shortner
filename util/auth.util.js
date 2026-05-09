@@ -1,5 +1,6 @@
-import jwt from "jsonwebtoken"
+import jwt from "jsonwebtoken";
 import config from "./config.util.js";
+import logger from "./logger.util.js";
 
 const AUTH_COOKIE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
@@ -9,7 +10,7 @@ export function setUser(user) {
         name: user.name,
         username: user.username,
         isAdmin: user.isAdmin ?? false,
-        tokenVersion: user.tokenVersion ?? 0,
+        tokenVersion: user.tokenVersion ?? 0
     };
     return jwt.sign(payload, config.jwtSecretKey, { expiresIn: "1d" });
 }
@@ -19,6 +20,7 @@ export function getUser(token) {
     try {
         return jwt.verify(token, config.jwtSecretKey);
     } catch (err) {
+        logger.log(err);
         return null;
     }
 }
@@ -37,7 +39,7 @@ export function removeUser(token) {
     try {
         return jwt.verify(token, config.jwtSecretKey);
     } catch (err) {
+        logger.log(err);
         return null;
     }
 }
-

@@ -184,8 +184,7 @@ apiRouter.get("/", (_req, res) => res.status(200).json({ message: "URL Shortener
  *       409:
  *         description: Custom short ID conflict.
  */
-apiRouter.route("/urls")
-    .post(urlCreateRateLimiter, generateShortId);
+apiRouter.route("/urls").post(urlCreateRateLimiter, generateShortId);
 
 /**
  * @swagger
@@ -248,7 +247,8 @@ apiRouter.route("/urls")
  *       404:
  *         description: Short URL not found.
  */
-apiRouter.route("/urls/:shortId")
+apiRouter
+    .route("/urls/:shortId")
     .put(restrictToLoginUserOnly, updateShortUrl)
     .patch(restrictToLoginUserOnly, updateShortUrl)
     .delete(restrictToLoginUserOnly, deleteShortUrl);

@@ -5,7 +5,13 @@ import request from "supertest";
 process.env.APP_ENV = "test";
 process.env.TEST_DB_NAME = process.env.TEST_DB_NAME || "url-shortner-integration";
 
-const [{ createApp }, { default: connectDB }, { default: UrlModel }, { default: User }, { default: RateLimitEntry }] = await Promise.all([
+const [
+    { createApp },
+    { default: connectDB },
+    { default: UrlModel },
+    { default: User },
+    { default: RateLimitEntry }
+] = await Promise.all([
     import("../app.js"),
     import("../dbConnection.js"),
     import("../model/url.models.js"),
@@ -20,7 +26,7 @@ const TEST_USERNAME = `tester_${Date.now()}`;
 const TEST_DB_NAME = process.env.TEST_DB_NAME;
 
 function toDateTimeLocalValue(date) {
-    const localDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60 * 1000));
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
     return localDate.toISOString().slice(0, 16);
 }
 
@@ -172,7 +178,10 @@ async function run() {
             })
             .expect(201);
 
-        const userUrl = await UrlModel.findOne({ redirectUrl: SAMPLE_URL, createdBy: createdUser._id });
+        const userUrl = await UrlModel.findOne({
+            redirectUrl: SAMPLE_URL,
+            createdBy: createdUser._id
+        });
         assert.ok(userUrl);
         assert.notEqual(String(userUrl._id), String(guestUrl._id));
 
@@ -192,7 +201,10 @@ async function run() {
                 assert.equal(response.body.url.shortId, CUSTOM_SHORT_ID);
             });
 
-        const customUrl = await UrlModel.findOne({ shortId: CUSTOM_SHORT_ID, createdBy: createdUser._id });
+        const customUrl = await UrlModel.findOne({
+            shortId: CUSTOM_SHORT_ID,
+            createdBy: createdUser._id
+        });
         assert.ok(customUrl);
         assert.equal(customUrl.redirectUrl, "https://example.com/custom");
         assert.ok(customUrl.expiresAt);
@@ -211,7 +223,10 @@ async function run() {
                 assert.equal(response.body.url.shortId, UPDATED_CUSTOM_SHORT_ID);
             });
 
-        const updatedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID, createdBy: createdUser._id });
+        const updatedCustomUrl = await UrlModel.findOne({
+            shortId: UPDATED_CUSTOM_SHORT_ID,
+            createdBy: createdUser._id
+        });
         assert.ok(updatedCustomUrl);
         assert.equal(updatedCustomUrl.redirectUrl, "https://example.com/custom-updated");
 
@@ -286,9 +301,7 @@ async function run() {
                 assert.equal(response.body.url.isDisabled, true);
             });
 
-        await request(app)
-            .get(`/${shortId}`)
-            .expect(403);
+        await request(app).get(`/${shortId}`).expect(403);
 
         await request(app)
             .delete(`/api/urls/${UPDATED_CUSTOM_SHORT_ID}`)
@@ -298,10 +311,7 @@ async function run() {
         const deletedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID });
         assert.equal(deletedCustomUrl, null);
 
-        await request(app)
-            .post("/api/auth/logout")
-            .set("Cookie", authCookie)
-            .expect(200);
+        await request(app).post("/api/auth/logout").set("Cookie", authCookie).expect(200);
 
         await request(app)
             .get("/profile")
