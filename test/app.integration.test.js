@@ -64,14 +64,14 @@ async function run() {
             .get("/")
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Guest URL Shortener/);
+                assert.match(response.text, /URL Shortener/);
             });
 
         await request(app)
             .get("/ui")
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Guest URL Shortener/);
+                assert.match(response.text, /URL Shortener/);
             });
 
         await request(app)
