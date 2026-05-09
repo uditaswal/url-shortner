@@ -17,7 +17,7 @@
                     <div class="form-error"><%= locals.error %></div>
                 <% } %>
 
-                <form action="/user" method="POST">
+                <form action="/ui/auth/signup" method="POST">
                     <div class="form-group">
                         <label>Full Name</label>
                         <input type="text" name="name" placeholder="John Doe" value="<%= locals.values?.name || '' %>" autocomplete="name" required>
@@ -43,7 +43,7 @@
             </div>
 
             <div class="auth-footer">
-                Already have an account? <a href="/login">Login</a>
+                Already have an account? <a href="/ui/login">Login</a>
             </div>
         </div>
     </main>

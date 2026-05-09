@@ -31,8 +31,8 @@
                                     <p>You are using guest mode. You can shorten URLs, but your dashboard and old links
                                         are only available after signup or login.</p>
                                     <div class="guest-actions">
-                                        <a href="/login" class="button-link secondary-link">Login</a>
-                                        <a href="/user/signup" class="button-link">Signup</a>
+                                        <a href="/ui/login" class="button-link secondary-link">Login</a>
+                                        <a href="/ui/signup" class="button-link">Signup</a>
                                     </div>
                                 </div>
                                 <% } %>
@@ -69,7 +69,7 @@
                                                                             memorable.</p>
                                                                     </div>
                                                                 </div>
-                                                                <form class="row-form" method="POST" action="/api"
+                                                                <form class="row-form" method="POST" action="/ui/urls"
                                                                     id="shortUrlForm">
                                                                     <input type="text" name="url" id="urlInput"
                                                                         placeholder="https://example.com"
@@ -380,7 +380,7 @@
                                                                                                                         </div>
                                                                                                                         <form
                                                                                                                             method="POST"
-                                                                                                                            action="/api/manage/<%= el.shortId %>"
+                                                                                                                            action="/ui/urls/<%= el.shortId %>"
                                                                                                                             class="manage-url-form">
                                                                                                                             <label>
                                                                                                                                 <span>Short
@@ -442,7 +442,7 @@
                                                                                                                 </details>
                                                                                                                 <form
                                                                                                                     method="POST"
-                                                                                                                    action="/api/delete/<%= el.shortId %>"
+                                                                                                                    action="/ui/urls/<%= el.shortId %>/delete"
                                                                                                                     class="inline-delete-form">
                                                                                                                     <button
                                                                                                                         type="submit"

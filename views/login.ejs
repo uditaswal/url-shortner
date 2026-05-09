@@ -17,7 +17,7 @@
                     <div class="form-error"><%= locals.error %></div>
                 <% } %>
 
-                <form action="/user/login" method="POST">
+                <form action="/ui/auth/login" method="POST">
                     <div class="form-group">
                         <label>Username</label>
                         <input type="text" name="username" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" required>
@@ -36,7 +36,7 @@
             </div>
 
             <div class="auth-footer">
-                New here? <a href="/user/signup">Create an account</a>
+                New here? <a href="/ui/signup">Create an account</a>
             </div>
         </div>
     </main>
