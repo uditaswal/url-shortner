@@ -2,165 +2,107 @@
 <html lang="en">
 
 <head>
-    <%- include("partials/head", { title: "URL Shortener - Profile Stats" }) %>
+    <%- include("partials/head", { title: "Link analytics" }) %>
 </head>
 
 <body>
-    <%
-        function formatCompactDate(value) {
-            if (!value) {
-                return { date: "Never", time: "" };
-            }
-
-            const date = new Date(value);
-            return {
-                date: date.toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric"
-                }),
-                time: date.toLocaleTimeString("en-IN", {
-                    hour: "numeric",
-                    minute: "2-digit"
-                })
-            };
-        }
-    %>
-
     <%- include("partials/header") %>
 
-    <main class="app-main">
+    <main class="app-main" id="main-content">
         <div class="container">
-            <h1>Profile & URL Stats</h1>
+            <div class="page-heading">
+                <h1>Analytics</h1>
+                <p>Human visits across all your short links. Automated traffic is excluded.</p>
+            </div>
 
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div class="stat-label">Total URLs</div>
+                    <div class="stat-label">Links created</div>
                     <div class="stat-value"><%= stats.totalUrls %></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Total Clicks</div>
+                    <div class="stat-label">Human visits</div>
                     <div class="stat-value"><%= stats.totalClicks %></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Active URLs</div>
+                    <div class="stat-label">Active links</div>
                     <div class="stat-value"><%= stats.activeUrls %></div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Bot Visits Filtered</div>
+                    <div class="stat-label">Bots excluded</div>
                     <div class="stat-value"><%= stats.botFilteredClicks %></div>
                 </div>
             </div>
 
-            <div class="card">
-                <h2>Country Stats</h2>
+            <section class="data-section">
+                <div class="section-heading">
+                    <div>
+                        <h2>Visits by country</h2>
+                        <p>Location appears when the hosting provider supplies it.</p>
+                    </div>
+                </div>
                 <% if (locals.countryStats && locals.countryStats.length > 0) { %>
                     <div class="table-wrap">
-                    <table class="dashboard-table dashboard-table-compact">
-                        <thead>
-                            <tr>
-                                <th>Country</th>
-                                <th>Clicks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% locals.countryStats.forEach((item) => { %>
-                                <tr>
-                                    <td><%= item.country %></td>
-                                    <td><%= item.clicks %></td>
-                                </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
-                    </div>
-                <% } else { %>
-                    <p class="empty">No country data yet. Country stats will appear once visits come through a proxy that forwards location headers.</p>
-                <% } %>
-            </div>
-
-            <div class="card">
-                <% if (locals.urls && locals.urls.length > 0) { %>
-                    <div class="table-wrap">
-                    <table class="dashboard-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>Short</th>
-                                <th>Original</th>
-                                <th>Clicks</th>
-                                <th>Status</th>
-                                <th>Expires</th>
-                                <th>Created</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% locals.urls.forEach((el, index) => { %>
-                                <% const expiresMeta = formatCompactDate(el.expiresAt); %>
-                                <% const createdMeta = formatCompactDate(el.createdAt); %>
-                                <tr>
-                                    <td><%= index + 1 %></td>
-                                    <td><a href="/<%= el.shortId %>" target="_blank"><%= el.shortId %></a></td>
-                                    <td class="ellipsis-cell"><a href="<%= el.redirectUrl %>" target="_blank"><%= el.redirectUrl %></a></td>
-                                    <td><%= el.visitHistory ? el.visitHistory.filter((visit) => !visit.isBot).length : 0 %></td>
-                                    <td><%= el.statusLabel %></td>
-                                    <td class="date-cell">
-                                        <span class="date-primary"><%= expiresMeta.date %></span>
-                                        <% if (expiresMeta.time) { %>
-                                            <span class="date-secondary"><%= expiresMeta.time %></span>
-                                        <% } %>
-                                    </td>
-                                    <td class="date-cell">
-                                        <span class="date-primary"><%= createdMeta.date %></span>
-                                        <span class="date-secondary"><%= createdMeta.time %></span>
-                                    </td>
-                                </tr>
-                            <% }) %>
-                        </tbody>
-                    </table>
-                    </div>
-                <% } else { %>
-                    <p class="empty">You have not created any URLs yet.</p>
-                <% } %>
-            </div>
-
-            <% if (locals.user?.isAdmin) { %>
-                <div class="card">
-                    <h2>Admin Moderation</h2>
-                    <% if (locals.flaggedUrls && locals.flaggedUrls.length > 0) { %>
-                        <div class="table-wrap">
-                        <table class="dashboard-table">
+                        <table class="dashboard-table dashboard-table-compact">
                             <thead>
                                 <tr>
-                                    <th>Short</th>
-                                    <th>Original</th>
-                                    <th>Status</th>
-                                    <th>Reason</th>
-                                    <th>Action</th>
+                                    <th>Country</th>
+                                    <th>Clicks</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <% locals.flaggedUrls.forEach((item) => { %>
+                                <% locals.countryStats.forEach((item) => { %>
                                     <tr>
-                                        <td><%= item.shortId %></td>
-                                        <td class="ellipsis-cell"><a href="<%= item.redirectUrl %>" target="_blank"><%= item.redirectUrl %></a></td>
-                                        <td><%= item.statusLabel %></td>
-                                        <td><%= item.disabledReason || "-" %></td>
-                                        <td>
-                                            <form method="POST" action="/ui/admin/urls/<%= item.shortId %>/moderation">
-                                                <input type="hidden" name="action" value="<%= item.isDisabled ? 'enable' : 'disable' %>">
-                                                <input type="text" name="disabledReason" placeholder="Moderation reason">
-                                                <button type="submit"><%= item.isDisabled ? "Enable" : "Disable" %></button>
-                                            </form>
-                                        </td>
+                                        <td><%= item.country %></td>
+                                        <td class="numeric-cell"><%= item.clicks %></td>
                                     </tr>
                                 <% }) %>
                             </tbody>
                         </table>
+                    </div>
+                <% } else { %>
+                    <p class="empty">No location data yet.</p>
+                <% } %>
+            </section>
+
+            <% if (locals.user?.isAdmin) { %>
+                <section class="data-section">
+                    <h2>Admin moderation</h2>
+                    <% if (locals.flaggedUrls && locals.flaggedUrls.length > 0) { %>
+                        <div class="table-wrap">
+                            <table class="dashboard-table">
+                                <thead>
+                                    <tr>
+                                        <th>Short link</th>
+                                        <th>Destination</th>
+                                        <th>Status</th>
+                                        <th>Reason</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% locals.flaggedUrls.forEach((item) => { %>
+                                        <tr>
+                                            <td>/<%= item.shortId %></td>
+                                            <td class="ellipsis-cell"><a href="<%= item.redirectUrl %>" target="_blank" rel="noopener noreferrer"><%= item.redirectUrl %></a></td>
+                                            <td><span class="status-badge status-<%= item.statusLabel %>"><%= item.statusLabel %></span></td>
+                                            <td><%= item.disabledReason || "—" %></td>
+                                            <td>
+                                                <form class="moderation-form" method="POST" action="/ui/admin/urls/<%= item.shortId %>/moderation">
+                                                    <input type="hidden" name="action" value="<%= item.isDisabled ? 'enable' : 'disable' %>">
+                                                    <input type="text" name="disabledReason" placeholder="Moderation reason" aria-label="Moderation reason for <%= item.shortId %>">
+                                                    <button type="submit"><%= item.isDisabled ? "Enable" : "Disable" %></button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
                         </div>
                     <% } else { %>
                         <p class="empty">No expired or disabled URLs need moderation right now.</p>
                     <% } %>
-                </div>
+                </section>
             <% } %>
         </div>
     </main>

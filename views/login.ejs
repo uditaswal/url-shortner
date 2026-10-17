@@ -2,42 +2,45 @@
 <html lang="en">
 
 <head>
-    <%- include("partials/head", { title: "URL Shortener - Login" }) %>
+    <%- include("partials/head", { title: "Sign in" }) %>
 </head>
 
 <body>
     <%- include("partials/header") %>
 
-    <main class="app-main">
+    <main class="app-main auth-main" id="main-content">
         <div class="narrow-container">
-            <h1>Login</h1>
+            <div class="page-heading">
+                <h1>Welcome back</h1>
+                <p>Sign in to manage your links and view analytics.</p>
+            </div>
 
-            <div class="card">
+            <section class="auth-panel" aria-label="Sign in form">
                 <% if (locals.error) { %>
-                    <div class="form-error"><%= locals.error %></div>
+                    <div class="form-error" role="alert"><%= locals.error %></div>
                 <% } %>
 
                 <form action="/ui/auth/login" method="POST">
                     <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" name="username" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" required>
+                        <label for="loginUsername">Username</label>
+                        <input type="text" name="username" id="loginUsername" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" spellcheck="false" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Password</label>
+                        <label for="loginPassword">Password</label>
                         <div class="password-field">
-                            <input type="password" name="password" id="loginPassword" placeholder="********" autocomplete="current-password" required>
-                            <button type="button" class="password-toggle" data-password-target="loginPassword">Show</button>
+                            <input type="password" name="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password" required>
+                            <button type="button" class="password-toggle" data-password-target="loginPassword" aria-label="Show password">Show</button>
                         </div>
                     </div>
 
-                    <button class="full-button" type="submit">Login</button>
+                    <button class="full-button" type="submit">Sign in</button>
                 </form>
-            </div>
+            </section>
 
-            <div class="auth-footer">
+            <p class="auth-footer">
                 New here? <a href="/ui/signup">Create an account</a>
-            </div>
+            </p>
         </div>
     </main>
 
@@ -52,6 +55,7 @@
                 const isPassword = input.type === "password";
                 input.type = isPassword ? "text" : "password";
                 button.textContent = isPassword ? "Hide" : "Show";
+                button.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
             });
         });
     </script>

@@ -1,39 +1,32 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="app-header">
     <nav class="app-nav desktop-nav">
-        <a href="/ui" class="brand">URL Shortener</a>
+        <a href="/ui" class="brand">
+            <img src="/images/url-shortener-logo.png" alt="" class="brand-logo" width="36" height="18">
+            <span>URL Shortener</span>
+        </a>
         <% if (locals.user) { %>
             <div class="header-user-area">
-                <a href="/ui" class="nav-link">Home</a>
-                <a href="/ui/profile" class="profile-link" title="View Profile Stats">
-                    <span class="profile-icon" aria-hidden="true">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2" />
-                            <path d="M4 20c0-3.5 3.6-6 8-6s8 2.5 8 6" stroke="currentColor" stroke-width="2"
-                                stroke-linecap="round" />
-                        </svg>
-                    </span>
-                    <span class="profile-text">
-                        <span class="profile-name">
-                            <%= locals.user.name %>
-                        </span>
-                        <span class="profile-email">@<%= locals.user.username %></span>
-                    </span>
-                </a>
+                <a href="/ui" class="nav-link" <%= ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
+                <a href="/ui/profile" class="nav-link" <%= ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
+                <span class="user-chip" title="Signed in as <%= locals.user.name %>">@<%= locals.user.username %></span>
                 <form action="/ui/auth/logout" method="POST" class="logout-form">
-                    <button type="submit" class="logout-btn">Logout</button>
+                    <button type="submit" class="logout-btn">Sign out</button>
                 </form>
             </div>
-            <% } else { %>
-                <div class="nav-links">
-                    <a href="/ui">Guest Mode</a>
-                    <a href="/ui/login">Login</a>
-                    <a href="/ui/signup">Signup</a>
-                </div>
-                <% } %>
+        <% } else { %>
+            <div class="nav-links">
+                <a href="/ui/login">Sign in</a>
+                <a href="/ui/signup" class="nav-signup">Create account</a>
+            </div>
+        <% } %>
     </nav>
 
     <nav class="app-nav mobile-nav" aria-label="Mobile navigation">
-        <a href="/ui" class="brand">URL Shortener</a>
+        <a href="/ui" class="brand">
+            <img src="/images/url-shortener-logo.png" alt="" class="brand-logo" width="36" height="18">
+            <span>URL Shortener</span>
+        </a>
         <div class="mobile-nav-actions">
             <details class="mobile-menu">
                 <summary aria-label="Open menu">
@@ -45,16 +38,16 @@
                 </summary>
                 <div class="mobile-menu-panel">
                     <% if (locals.user) { %>
-                        <a href="/ui">Home</a>
-                        <a href="/ui/profile">Profile</a>
+                        <span class="mobile-menu-user">@<%= locals.user.username %></span>
+                        <a href="/ui" <%= ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
+                        <a href="/ui/profile" <%= ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
                         <form action="/ui/auth/logout" method="POST" class="mobile-menu-form">
-                            <button type="submit" class="mobile-menu-button danger-text">Logout</button>
+                            <button type="submit" class="mobile-menu-button danger-text">Sign out</button>
                         </form>
-                        <% } else { %>
-                            <a href="/ui">Guest Mode</a>
-                            <a href="/ui/login">Login</a>
-                            <a href="/ui/signup">Signup</a>
-                            <% } %>
+                    <% } else { %>
+                        <a href="/ui/login">Sign in</a>
+                        <a href="/ui/signup">Create account</a>
+                    <% } %>
                 </div>
             </details>
         </div>

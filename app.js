@@ -54,6 +54,7 @@ export function createApp() {
     app.use(requestLogger);
     app.use((req, res, next) => {
         res.locals.user = req.user || null;
+        res.locals.currentPath = req.path;
         next();
     });
 

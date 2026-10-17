@@ -1,26 +1,85 @@
 # URL Shortener
 
-A full-stack URL shortener built with Node.js, Express, MongoDB, and EJS. The app supports both a browser UI and a JSON API, with legacy EJS-era routes still available as compatibility aliases during the transition.
+A full-stack URL shortener with a server-rendered browser experience and a documented JSON API. It supports guest links, authenticated dashboards, expiration controls, analytics, moderation, and public trust-and-safety pages.
 
-## Highlights
+## Key Project Metrics
 
-- Guest and authenticated URL shortening
-- Per-user dashboards with filtering, sorting, and profile analytics
-- Admin moderation for disabled or expired links
-- Cookie-based auth with hashed passwords
-- Security hardening with Helmet, rate limiting, and input validation
-- Swagger-backed API documentation
-- Mongo-backed integration testing
+These are implementation metrics from the repository, not production traffic claims:
 
-## Route Layout
+- **2 access modes:** guest shortening and authenticated account management
+- **3 route surfaces:** REST API, browser UI, and legacy compatibility routes
+- **5 dashboard signals:** total links, human visits, active links, excluded bot visits, and country distribution
+- **4 management controls:** search, status filter, sort field, and sort order
+- **4 public safety pages:** Privacy Notice, Terms of Service, Acceptable Use, and Report Abuse
+- **1 end-to-end integration scenario:** authentication, link creation, redirect, analytics, updates, moderation, and deletion
 
-The app now uses three route groups:
+## Features
 
-- `/api/*` for REST and JSON responses
-- `/ui/*` for browser pages and HTML form submissions
-- legacy routes like `/`, `/profile`, `/login`, `/user/*`, and old form-style `/api/*` posts as compatibility paths
+### Link Management
 
-Canonical examples:
+- Shorten a destination URL as a guest or signed-in user
+- Choose a custom alias or let the app generate one
+- Set an optional expiration date and time
+- Reuse an existing short URL for a duplicate destination owned by the same user
+- Edit, disable, re-enable, or delete saved links
+- Redirect visitors through `/:shortId`
+
+### Accounts and Access
+
+- Sign up and sign in with a unique username
+- Secure password hashing and signed authentication tokens
+- Account-scoped dashboards so users only manage their own links
+- Role-protected moderation tools for administrators
+
+### Dashboard and Analytics
+
+- Search saved links and filter them by status
+- Sort results by supported fields and direction
+- Track human visits separately from detected bot traffic
+- View active-link totals, visit counts, and country distribution
+- Inspect analytics through both the browser UI and JSON API
+
+### Safety and Reliability
+
+- Security headers and Content Security Policy through Helmet
+- Rate limits on authentication and link-creation flows
+- Server-side validation and sanitisation
+- Centralised request, application, and process-error logging
+- Link expiration and administrator moderation
+- Public policies and an abuse-reporting path
+- Health check and database connectivity check
+
+### Developer Experience
+
+- Swagger UI for API discovery
+- EJS server-rendered pages with shared layouts and styling
+- Clear API, UI, and legacy route separation
+- ESLint, Prettier, Nodemon, and Supertest tooling
+- Environment-specific test and production configuration
+
+## Architecture
+
+```text
+Browser / API client
+        |
+Express route modules
+        |
+Authentication, validation, rate limiting, and logging middleware
+        |
+Controllers and service utilities
+        |
+Mongoose models
+        |
+MongoDB
+```
+
+The app exposes three route groups:
+
+- `/api/*` returns REST and JSON responses
+- `/ui/*` renders browser pages and handles HTML forms
+- Legacy paths such as `/`, `/profile`, `/login`, and `/user/*` remain as compatibility aliases
+
+Canonical route examples:
 
 - `GET /api/health`
 - `POST /api/auth/signup`
@@ -34,115 +93,150 @@ Canonical examples:
 - `GET /ui/profile`
 - `POST /ui/urls`
 
-## Features
-
-### URL Shortening
-
-- Create short URLs for long links
-- Reuse an existing short URL for duplicate submissions by the same owner
-- Support custom short IDs and optional expiration
-- Redirect publicly through `/:shortId`
-
-### Authentication
-
-- Signup and login use a unique username
-- Passwords are hashed with `bcrypt`
-- Auth is stored in an HTTP-only cookie
-
-### Dashboard And Analytics
-
-- Logged-in users only see their own URLs
-- Dashboard supports search, status filters, sort fields, and ordering
-- Profile view shows total URLs, active URLs, click totals, bot-filtered counts, and country stats
-- Admins can disable or re-enable links from the moderation view
-
-### Security And Reliability
-
-- `helmet` for secure headers and CSP
-- `express-rate-limit` on auth and URL creation flows
-- Input sanitization and validation helpers
-- Request logging and process/app error logging
-- Integration test covering the main URL lifecycle
-
 ## Tech Stack
 
-- Node.js
-- Express.js
-- MongoDB + Mongoose
+### Application
+
+- Node.js 20+
+- Express 5
 - EJS
-- JWT
+- MongoDB and Mongoose
+
+### Authentication and Security
+
+- JSON Web Tokens
 - bcrypt
 - Helmet
-- Winston
+- express-rate-limit
+
+### Observability and Documentation
+
+- Winston with rotating log files
+- Swagger UI and OpenAPI annotations
+
+### Development and Testing
+
+- pnpm
+- Nodemon
+- ESLint and Prettier
 - Supertest
 
-## Project Structure
+## Run Locally
 
-```text
-controller/   Route handlers
-middleware/   Auth, logging, rate limiting, and error handling
-model/        Mongoose schemas
-routes/       API, UI, and legacy-compatible route modules
-util/         Config, auth, logger, and validation helpers
-views/        EJS templates
-public/       Static assets
-test/         Integration test coverage
+### Prerequisites
+
+- Node.js 20 or later
+- pnpm
+- A local MongoDB server or MongoDB Atlas connection string
+
+If pnpm is not installed, enable it through Corepack:
+
+```bash
+corepack enable
 ```
 
-## Getting Started
-
-### 1. Install dependencies
+### 1. Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-### 2. Configure environment variables
+### 2. Create the Environment File
 
-Use [`.env.example`](./.env.example) as the baseline.
+Copy [`.env.example`](./.env.example) to `.env`.
+
+PowerShell:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+macOS or Linux:
+
+```bash
+cp .env.example .env
+```
+
+Configure the environment values:
 
 ```env
 PORT=3000
-APP_ENV=production
+APP_ENV=test
 
-TEST_DB_URL=<endpoint>
-TEST_DB_NAME=url-shortner
+TEST_DB_URL=mongodb://127.0.0.1:27017/
+TEST_DB_NAME=url-shortner-test
 TEST_DB_ACCOUNT=local-test-user
-TEST_JWT_SECRET_KEY=your-secret
+TEST_JWT_SECRET_KEY=replace-with-a-long-random-secret
 
-PROD_DB_URL=<endpoint>
+PROD_DB_URL=mongodb://127.0.0.1:27017/
 PROD_DB_NAME=url-shortner-prod
 PROD_DB_ACCOUNT=local-prod-user
-PROD_JWT_SECRET_KEY=your-production-secret
+PROD_JWT_SECRET_KEY=replace-with-a-different-production-secret
 ```
 
-### 3. Start the app
+For a hosted MongoDB deployment, replace the relevant database URL with its connection string. When `APP_ENV=test`, the app reads the `TEST_*` variables. When `APP_ENV=production`, it reads the `PROD_*` variables.
+
+### 3. Check the Database Connection
+
+```bash
+pnpm db:check
+```
+
+A successful check prints the connected database and host.
+
+### 4. Start the App
+
+Development mode with automatic restarts:
+
+```bash
+pnpm dev
+```
+
+Normal start:
 
 ```bash
 pnpm start
 ```
 
-### 4. Run the integration test
+The terminal confirms the local address:
+
+```text
+URL Shortener started at http://localhost:3000/
+```
+
+Open:
+
+- App: [http://localhost:3000](http://localhost:3000)
+- API documentation: [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs)
+- Health check: [http://localhost:3000/api/health](http://localhost:3000/api/health)
+
+### 5. Run Project Checks
 
 ```bash
+pnpm lint
 pnpm test
 ```
 
+The integration scenario uses the configured test database and deletes URL, user, and rate-limit records in `TEST_DB_NAME` before and after it runs. Always point it at a dedicated disposable test database.
+
+## Useful Commands
+
+- `pnpm dev` starts the development server with automatic restarts
+- `pnpm start` starts the application normally
+- `pnpm db:check` verifies database connectivity without changing data
+- `pnpm lint` checks JavaScript and EJS files
+- `pnpm lint:fix` applies supported lint fixes
+- `pnpm format` formats supported source files
+- `pnpm test` runs the MongoDB-backed integration scenario
+
 ## API Documentation
 
-Swagger UI is available at [http://domain/api/api-docs](http://domain/api/api-docs).
-
-The documented API covers:
-
-- auth endpoints under `/api/auth/*`
-- URL creation, update, delete, analytics, and moderation under `/api/*`
-- dashboard JSON endpoints like `/api/dashboard`
-- health checks via `/api/health`
+Swagger UI is available at [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs) while the app is running. It documents authentication, URL lifecycle, analytics, moderation, dashboard, and health endpoints.
 
 Example health check:
 
 ```bash
-curl <url>/api/health
+curl http://localhost:3000/api/health
 ```
 
 ```json
@@ -150,4 +244,17 @@ curl <url>/api/health
     "status": "UP",
     "timestamp": "2026-05-09T12:00:00.000Z"
 }
+```
+
+## Project Structure
+
+```text
+controller/   Route handlers
+middleware/   Authentication, logging, rate limiting, and error handling
+model/        Mongoose schemas
+routes/       API, UI, and legacy-compatible route modules
+util/         Configuration, authentication, logging, and validation helpers
+views/        EJS templates
+public/       Static assets
+test/         Integration coverage
 ```

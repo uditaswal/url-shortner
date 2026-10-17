@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import URL from "../model/url.models.js";
+import { getLegalPage } from "../util/legalPages.util.js";
 
 const apiStaticRouter = express.Router();
 const uiStaticRouter = express.Router();
@@ -247,6 +248,13 @@ uiStaticRouter.get("/signup", (req, res) => {
 
 uiStaticRouter.get("/user/signup", (_req, res) => res.redirect("/ui/signup"));
 
+uiStaticRouter.get(["/privacy", "/terms", "/acceptable-use", "/report-abuse"], (req, res) => {
+    const pageKey = req.path.slice(1);
+    const page = getLegalPage(pageKey);
+
+    return res.status(200).render("legal", { page });
+});
+
 legacyStaticRouter.get("/", renderDashboard);
 legacyStaticRouter.get("/ui", renderDashboard);
 legacyStaticRouter.get("/legacy", renderDashboard);
@@ -263,6 +271,11 @@ legacyStaticRouter.get("/profile", async (req, res) => {
 });
 
 legacyStaticRouter.get("/legacy/profile", (_req, res) => res.redirect("/ui/profile"));
+
+legacyStaticRouter.get("/privacy", (_req, res) => res.redirect("/ui/privacy"));
+legacyStaticRouter.get("/terms", (_req, res) => res.redirect("/ui/terms"));
+legacyStaticRouter.get("/acceptable-use", (_req, res) => res.redirect("/ui/acceptable-use"));
+legacyStaticRouter.get("/report-abuse", (_req, res) => res.redirect("/ui/report-abuse"));
 
 legacyStaticRouter.get("/login", (req, res) => {
     if (req.user) return res.redirect("/");

@@ -3,14 +3,9 @@
 <title>
     <%= typeof title !=="undefined" ? title : "URL Shortener" %>
 </title>
-<meta name="theme-color" content="#050816">
-<link rel="icon" type="image/png" href="/css/favicon.png">
+<meta name="theme-color" content="#080b10">
+<meta name="color-scheme" content="dark">
+<link rel="icon" type="image/png" sizes="256x256" href="/images/favicon.png?v=2">
+<link rel="shortcut icon" type="image/png" href="/images/favicon.png?v=2">
+<link rel="apple-touch-icon" href="/images/favicon.png?v=2">
 <link rel="stylesheet" href="/css/global.css">
-<script>
-    document.addEventListener('click', (e) => {
-        document.querySelectorAll('details.mobile-menu[open]').forEach((el) => {
-            if (!el.contains(e.target)) el.removeAttribute('open');
-        });
-    });
-
-</script>

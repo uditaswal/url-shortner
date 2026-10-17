@@ -2,49 +2,56 @@
 <html lang="en">
 
 <head>
-    <%- include("partials/head", { title: "URL Shortener - Signup" }) %>
+    <%- include("partials/head", { title: "Create an account" }) %>
 </head>
 
 <body>
     <%- include("partials/header") %>
 
-    <main class="app-main">
+    <main class="app-main auth-main" id="main-content">
         <div class="narrow-container">
-            <h1>Create Account</h1>
+            <div class="page-heading">
+                <h1>Create an account</h1>
+                <p>Save, edit, and understand every link you create.</p>
+            </div>
 
-            <div class="card">
+            <section class="auth-panel" aria-label="Create account form">
                 <% if (locals.error) { %>
-                    <div class="form-error"><%= locals.error %></div>
+                    <div class="form-error" role="alert"><%= locals.error %></div>
                 <% } %>
 
                 <form action="/ui/auth/signup" method="POST">
                     <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" name="name" placeholder="John Doe" value="<%= locals.values?.name || '' %>" autocomplete="name" required>
+                        <label for="signupName">Full name</label>
+                        <input type="text" name="name" id="signupName" placeholder="John Doe" value="<%= locals.values?.name || '' %>" autocomplete="name" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Username</label>
-                        <input type="text" name="username" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" required>
+                        <label for="signupUsername">Username</label>
+                        <input type="text" name="username" id="signupUsername" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" spellcheck="false" required>
                     </div>
 
                     <div class="form-group">
-                        <label>Password</label>
+                        <label for="signupPassword">Password</label>
                         <div class="password-field">
-                            <input type="password" name="password" id="signupPassword" placeholder="********" autocomplete="new-password" required>
-                            <button type="button" class="password-toggle" data-password-target="signupPassword">Show</button>
+                            <input type="password" name="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password" required>
+                            <button type="button" class="password-toggle" data-password-target="signupPassword" aria-label="Show password">Show</button>
                         </div>
                     </div>
 
                     <p class="form-help">Use a unique username and a password with at least 8 characters, uppercase, lowercase, and a number.</p>
 
-                    <button class="full-button" type="submit">Sign Up</button>
-                </form>
-            </div>
+                    <button class="full-button" type="submit">Create account</button>
 
-            <div class="auth-footer">
-                Already have an account? <a href="/ui/login">Login</a>
-            </div>
+                    <p class="legal-consent">
+                        By creating an account, you agree to the <a href="/ui/terms">Terms</a> and <a href="/ui/acceptable-use">Acceptable Use Policy</a>, and acknowledge the <a href="/ui/privacy">Privacy Notice</a>.
+                    </p>
+                </form>
+            </section>
+
+            <p class="auth-footer">
+                Already have an account? <a href="/ui/login">Sign in</a>
+            </p>
         </div>
     </main>
 
@@ -59,6 +66,7 @@
                 const isPassword = input.type === "password";
                 input.type = isPassword ? "text" : "password";
                 button.textContent = isPassword ? "Hide" : "Show";
+                button.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
             });
         });
     </script>

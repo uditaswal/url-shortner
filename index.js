@@ -1,7 +1,6 @@
 import connectDB from "./dbConnection.js";
 import { createApp } from "./app.js";
 import config from "./util/config.util.js";
-import logger from "./util/logger.util.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
 
@@ -66,6 +65,6 @@ app.get("/api/health", (req, res) => {
     res.status(200).json({ status: "UP", timestamp: new Date().toISOString() });
 });
 
-app.listen(PORT, () =>
-    logger.info(`Server is listening on http://localhost:${PORT}/ at ${new Date().toString()} `)
-);
+app.listen(PORT, () => {
+    console.info(`URL Shortener started at http://localhost:${PORT}/`);
+});

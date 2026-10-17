@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 
-dotenv.config({ path: ".env" });
+dotenv.config({ path: ".env", quiet: true });
 
 const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "test";
 const isProduction = appEnv === "production";
