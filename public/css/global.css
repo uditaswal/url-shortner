@@ -302,6 +302,19 @@ p {
     color: var(--accent-ink);
 }
 
+.nav-links .nav-signin {
+    min-height: 42px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--text);
+}
+
+.nav-links .nav-signin:hover {
+    border-color: var(--accent);
+    background: var(--surface-raised);
+    color: var(--accent-strong);
+}
+
 .nav-links .nav-signup:hover {
     background: var(--accent-strong);
     color: var(--accent-ink);
@@ -1000,7 +1013,7 @@ p {
 }
 
 .legal-main {
-    padding-top: clamp(2.5rem, 5vw, 4.5rem);
+    padding-top: clamp(1.5rem, 3vw, 2.75rem);
 }
 
 .legal-container {
@@ -1009,8 +1022,8 @@ p {
 }
 
 .legal-heading {
-    margin-bottom: 1.5rem;
-    padding-bottom: 1.5rem;
+    margin-bottom: 1.1rem;
+    padding-bottom: 1.1rem;
     border-bottom: 1px solid var(--line);
 }
 
@@ -1028,29 +1041,46 @@ p {
 .legal-nav {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    margin-bottom: 2.25rem;
+    gap: 0.55rem;
+    margin-bottom: 1.75rem;
 }
 
 .legal-nav a {
-    min-height: 38px;
+    min-height: 42px;
     display: inline-flex;
     align-items: center;
-    border-radius: 7px;
-    padding: 0.45rem 0.7rem;
-    color: var(--muted-strong);
-    font-size: 0.88rem;
-    font-weight: 680;
-    text-decoration: none;
-}
-
-.legal-nav a:hover,
-.legal-nav a[aria-current="page"] {
-    background: var(--surface-raised);
+    justify-content: center;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-small);
+    padding: 0.55rem 0.85rem;
+    background: var(--surface);
     color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 720;
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+        background-color 160ms ease,
+        border-color 160ms ease,
+        color 160ms ease,
+        transform 160ms ease;
+}
+
+.legal-nav a:hover {
+    border-color: var(--accent);
+    background: var(--surface-raised);
+    color: var(--accent-strong);
+    transform: translateY(-1px);
+}
+
+.legal-nav a:active {
+    transform: translateY(0);
 }
 
 .legal-nav a[aria-current="page"] {
+    border-color: rgba(61, 220, 132, 0.58);
+    background: rgba(61, 220, 132, 0.12);
+    color: var(--accent-strong);
     box-shadow: inset 0 -2px 0 var(--accent);
 }
 

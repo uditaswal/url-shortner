@@ -1,125 +1,119 @@
 # URL Shortener
 
-A full-stack URL shortener with a server-rendered browser experience and a documented JSON API. It supports guest links, authenticated dashboards, expiration controls, analytics, moderation, and public trust-and-safety pages.
+A full-stack URL shortener built with Node.js, Express, MongoDB, and server-rendered EJS. It supports guest links, account-based link management, expiration, click analytics, admin moderation, and a documented JSON API.
 
-## Key Project Metrics
+[Source code](https://github.com/uditaswal/url-shortner) · [Run the demo locally](#run-locally) · [API documentation](#api-documentation)
 
-These are implementation metrics from the repository, not production traffic claims:
+> A public deployment is not currently linked. The local setup below runs the complete application, including the interactive API documentation.
 
-- **2 access modes:** guest shortening and authenticated account management
-- **3 route surfaces:** REST API, browser UI, and legacy compatibility routes
-- **5 dashboard signals:** total links, human visits, active links, excluded bot visits, and country distribution
-- **4 management controls:** search, status filter, sort field, and sort order
-- **4 public safety pages:** Privacy Notice, Terms of Service, Acceptable Use, and Report Abuse
-- **1 end-to-end integration scenario:** authentication, link creation, redirect, analytics, updates, moderation, and deletion
+## Screenshots
+
+### Create a short link
+
+![URL creation screen with custom alias and expiration controls](docs/screenshots/shorten-url.png)
+
+### Manage saved links
+
+![Authenticated dashboard with link filters, status, editing, and analytics](docs/screenshots/links-dashboard.png)
+
+## What It Does
+
+Visitors can shorten a URL without creating an account. Registered users get a private dashboard where they can search, filter, edit, disable, and delete their links. Each link may use a generated or custom alias and can expire at a chosen date and time.
+
+Redirects record visit information for analytics. Known bot traffic is separated from human visits, and signed-in users can review totals and country distribution. Administrators can disable links that violate the service rules.
+
+The same application serves both the browser interface and a JSON API. Swagger UI documents the API and supports sending requests directly from the browser.
 
 ## Features
 
-### Link Management
-
-- Shorten a destination URL as a guest or signed-in user
-- Choose a custom alias or let the app generate one
-- Set an optional expiration date and time
-- Reuse an existing short URL for a duplicate destination owned by the same user
-- Edit, disable, re-enable, or delete saved links
-- Redirect visitors through `/:shortId`
-
-### Accounts and Access
-
-- Sign up and sign in with a unique username
-- Secure password hashing and signed authentication tokens
-- Account-scoped dashboards so users only manage their own links
-- Role-protected moderation tools for administrators
-
-### Dashboard and Analytics
-
-- Search saved links and filter them by status
-- Sort results by supported fields and direction
-- Track human visits separately from detected bot traffic
-- View active-link totals, visit counts, and country distribution
-- Inspect analytics through both the browser UI and JSON API
-
-### Safety and Reliability
-
-- Security headers and Content Security Policy through Helmet
-- Rate limits on authentication and link-creation flows
-- Server-side validation and sanitisation
-- Centralised request, application, and process-error logging
-- Link expiration and administrator moderation
-- Public policies and an abuse-reporting path
-- Health check and database connectivity check
-
-### Developer Experience
-
-- Swagger UI for API discovery
-- EJS server-rendered pages with shared layouts and styling
-- Clear API, UI, and legacy route separation
-- ESLint, Prettier, Nodemon, and Supertest tooling
-- Environment-specific test and production configuration
+- Guest and account-based URL shortening
+- Generated or custom short aliases
+- Optional expiration date and time
+- Account-scoped link dashboard
+- Search, status filtering, and sorting
+- Link editing, disabling, and deletion
+- Human and bot visit counts
+- Country-level visit summaries
+- Administrator moderation
+- Interactive OpenAPI documentation with copyable examples
+- Privacy, terms, acceptable-use, and abuse-reporting pages
+- Request logging, health checks, rate limiting, and CI
 
 ## Architecture
 
 ```text
-Browser / API client
+Browser or API client
         |
-Express route modules
+        v
+Express route layer
+  /ui/*       browser pages and forms
+  /api/*      JSON API
+  /:shortId   public redirect
         |
-Authentication, validation, rate limiting, and logging middleware
+        v
+Middleware
+  authentication -> validation -> rate limiting -> request logging
         |
-Controllers and service utilities
+        v
+Controllers
+  link lifecycle -> dashboard queries -> analytics -> moderation
         |
+        v
 Mongoose models
+  users -> URLs with visit history -> rate-limit records
         |
+        v
 MongoDB
 ```
 
-The app exposes three route groups:
+The UI and API share controllers, validation, authentication, and persistence rather than maintaining separate implementations. EJS renders the browser experience on the server, while API routes return JSON for external clients.
 
-- `/api/*` returns REST and JSON responses
-- `/ui/*` renders browser pages and handles HTML forms
-- Legacy paths such as `/`, `/profile`, `/login`, and `/user/*` remain as compatibility aliases
+The main route groups are:
 
-Canonical route examples:
+- `/ui/*` for browser pages and form submissions
+- `/api/*` for REST and JSON responses
+- `/:shortId` for public redirects
+- Legacy paths such as `/`, `/profile`, `/login`, and `/user/*` for backward compatibility
 
-- `GET /api/health`
-- `POST /api/auth/signup`
-- `POST /api/auth/login`
-- `POST /api/urls`
-- `GET /api/urls/:shortId/analytics`
-- `PATCH /api/admin/urls/:shortId/moderation`
-- `GET /ui`
-- `GET /ui/login`
-- `GET /ui/signup`
-- `GET /ui/profile`
-- `POST /ui/urls`
+## Technical Decisions and Tradeoffs
+
+### Server-rendered UI
+
+EJS keeps the project small and lets the browser UI reuse the same Express application as the API. It avoids a separate frontend build and deployment, but it offers less client-side interactivity than a dedicated SPA.
+
+### Visit history stored with each link
+
+Visit records are embedded in the URL document, which makes per-link analytics straightforward and keeps the current data model easy to understand. This is suitable for a portfolio-scale service; high-traffic links would eventually need a separate event collection or analytics pipeline to avoid unbounded document growth.
+
+### Signed authentication tokens with database validation
+
+Authentication uses a signed token in an HTTP-only cookie. Each request also resolves the user from MongoDB and checks a token version, which supports invalidating old sessions and reflecting role changes. The additional lookup is a deliberate consistency and control tradeoff.
+
+### Database-backed rate limiting
+
+Rate-limit records are shared through MongoDB instead of living only in process memory. This works across multiple application instances, but every protected request adds database work. Redis or another dedicated store would be a better fit at higher request volumes.
+
+### Heuristic bot detection
+
+Bot visits are identified from request signals such as the user agent. This keeps analytics useful without adding a third-party service, but the result is approximate because clients can omit or spoof those signals.
+
+### Compatibility routes
+
+Canonical `/ui/*` and `/api/*` routes coexist with older paths. This avoids breaking existing links while the routing structure evolves, at the cost of carrying additional route aliases that can be removed in a future breaking release.
 
 ## Tech Stack
 
-### Application
-
-- Node.js 20+
-- Express 5
-- EJS
-- MongoDB and Mongoose
-
-### Authentication and Security
-
-- JSON Web Tokens
-- bcrypt
-- Helmet
-- express-rate-limit
-
-### Observability and Documentation
-
-- Winston with rotating log files
-- Swagger UI and OpenAPI annotations
-
-### Development and Testing
-
-- pnpm
-- Nodemon
-- ESLint and Prettier
-- Supertest
+- **Runtime:** Node.js 20+
+- **Web framework:** Express 5
+- **Views:** EJS and CSS
+- **Database:** MongoDB with Mongoose
+- **Authentication:** JSON Web Tokens and bcrypt
+- **Security:** Helmet, Content Security Policy, server-side validation, and express-rate-limit
+- **Logging:** Winston with rotating log files
+- **API documentation:** Swagger UI and OpenAPI annotations
+- **Testing:** Supertest with a MongoDB-backed integration scenario
+- **Tooling:** pnpm, ESLint, Prettier, and Nodemon
+- **CI:** GitHub Actions with a MongoDB service container
 
 ## Run Locally
 
@@ -127,21 +121,23 @@ Canonical route examples:
 
 - Node.js 20 or later
 - pnpm
-- A local MongoDB server or MongoDB Atlas connection string
+- A local MongoDB server or a MongoDB connection string
 
-If pnpm is not installed, enable it through Corepack:
+Enable pnpm through Corepack if it is not already installed:
 
 ```bash
 corepack enable
 ```
 
-### 1. Install Dependencies
+### 1. Clone and install
 
 ```bash
+git clone https://github.com/uditaswal/url-shortner.git
+cd url-shortner
 pnpm install
 ```
 
-### 2. Create the Environment File
+### 2. Configure the environment
 
 Copy [`.env.example`](./.env.example) to `.env`.
 
@@ -157,7 +153,7 @@ macOS or Linux:
 cp .env.example .env
 ```
 
-Configure the environment values:
+Set the test and production values in `.env`:
 
 ```env
 PORT=3000
@@ -174,17 +170,15 @@ PROD_DB_ACCOUNT=local-prod-user
 PROD_JWT_SECRET_KEY=replace-with-a-different-production-secret
 ```
 
-For a hosted MongoDB deployment, replace the relevant database URL with its connection string. When `APP_ENV=test`, the app reads the `TEST_*` variables. When `APP_ENV=production`, it reads the `PROD_*` variables.
+When `APP_ENV=test`, the application reads the `TEST_*` variables. When `APP_ENV=production`, it reads the `PROD_*` variables.
 
-### 3. Check the Database Connection
+### 3. Check the database connection
 
 ```bash
 pnpm db:check
 ```
 
-A successful check prints the connected database and host.
-
-### 4. Start the App
+### 4. Start the application
 
 Development mode with automatic restarts:
 
@@ -198,40 +192,17 @@ Normal start:
 pnpm start
 ```
 
-The terminal confirms the local address:
+The terminal prints the address when the server is ready:
 
 ```text
 URL Shortener started at http://localhost:3000/
 ```
 
-Open:
-
-- App: [http://localhost:3000](http://localhost:3000)
-- API documentation: [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs)
-- Health check: [http://localhost:3000/api/health](http://localhost:3000/api/health)
-
-### 5. Run Project Checks
-
-```bash
-pnpm lint
-pnpm test
-```
-
-The integration scenario uses the configured test database and deletes URL, user, and rate-limit records in `TEST_DB_NAME` before and after it runs. Always point it at a dedicated disposable test database.
-
-## Useful Commands
-
-- `pnpm dev` starts the development server with automatic restarts
-- `pnpm start` starts the application normally
-- `pnpm db:check` verifies database connectivity without changing data
-- `pnpm lint` checks JavaScript and EJS files
-- `pnpm lint:fix` applies supported lint fixes
-- `pnpm format` formats supported source files
-- `pnpm test` runs the MongoDB-backed integration scenario
+Open [http://localhost:3000](http://localhost:3000) in a browser.
 
 ## API Documentation
 
-Swagger UI is available at [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs) while the app is running. It documents authentication, URL lifecycle, analytics, moderation, dashboard, and health endpoints.
+With the application running, open [http://localhost:3000/api/api-docs](http://localhost:3000/api/api-docs). The documentation covers authentication, URL creation and management, analytics, moderation, dashboard data, and health checks.
 
 Example health check:
 
@@ -246,15 +217,44 @@ curl http://localhost:3000/api/health
 }
 ```
 
+## Testing and CI
+
+Run the project checks locally:
+
+```bash
+pnpm lint
+pnpm test
+```
+
+The integration scenario covers signup, login, guest and authenticated link creation, custom aliases, expiration, redirects, bot filtering, analytics, editing, moderation, logout, and deletion.
+
+The test clears URL, user, and rate-limit records in `TEST_DB_NAME` before and after execution. Always use a dedicated disposable test database.
+
+GitHub Actions runs lint and the integration scenario for pushes and pull requests targeting `main` or `dev`. Every CI run starts a fresh MongoDB service container and uses a run-specific database.
+
+## Useful Commands
+
+```text
+pnpm dev        Start the development server with automatic restarts
+pnpm start      Start the application normally
+pnpm db:check   Verify database connectivity without changing data
+pnpm lint       Check JavaScript and EJS files
+pnpm lint:fix   Apply supported lint fixes
+pnpm format     Format supported source files
+pnpm test       Run the MongoDB-backed integration scenario
+```
+
 ## Project Structure
 
 ```text
-controller/   Route handlers
-middleware/   Authentication, logging, rate limiting, and error handling
-model/        Mongoose schemas
-routes/       API, UI, and legacy-compatible route modules
-util/         Configuration, authentication, logging, and validation helpers
-views/        EJS templates
-public/       Static assets
-test/         Integration coverage
+controller/          Route handlers and application workflows
+docs/screenshots/    README screenshots
+middleware/          Authentication, logging, validation, and rate limiting
+model/               Mongoose schemas and indexes
+public/              Styles, scripts, and image assets
+routes/              API, UI, redirect, and compatibility routes
+scripts/             Local utility scripts
+test/                End-to-end integration scenario
+util/                Configuration, authentication, logging, and helpers
+views/               EJS templates and shared partials
 ```

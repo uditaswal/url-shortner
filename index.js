@@ -30,8 +30,17 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Swagger UI custom options
 const swaggerUiOptions = {
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "URL Shortener API Docs"
+    customCssUrl: "/css/api-docs.css",
+    customJs: "/js/api-docs.js",
+    customfavIcon: "/images/url-shortener-logo.png",
+    customSiteTitle: "URL Shortener API Docs",
+    swaggerOptions: {
+        displayRequestDuration: true,
+        docExpansion: "list",
+        filter: true,
+        persistAuthorization: true,
+        tryItOutEnabled: false
+    }
 };
 
 // Add Swagger UI

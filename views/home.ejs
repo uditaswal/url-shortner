@@ -6,347 +6,435 @@
 </head>
 
 <body>
-    <%
-        function formatDisplayDate(value) {
-            return value ? new Date(value).toLocaleString("en-IN") : "Never";
-        }
+    <% function formatDisplayDate(value) { return value ? new Date(value).toLocaleString("en-IN") : "Never" ; } function
+        formatCompactDate(value) { if (!value) return { date: "Never" , time: "" }; const date=new Date(value); return {
+        date: date.toLocaleDateString("en-IN", { day: "numeric" , month: "short" , year: "numeric" }), time:
+        date.toLocaleTimeString("en-IN", { hour: "numeric" , minute: "2-digit" }) }; } function
+        formatEditableDate(value) { return value ? new Date(value).toISOString().slice(0, 10) : "" ; } function
+        formatEditableTime(value) { return value ? new Date(value).toISOString().slice(11, 16) : "" ; } %>
 
-        function formatCompactDate(value) {
-            if (!value) return { date: "Never", time: "" };
+        <%- include("partials/header") %>
 
-            const date = new Date(value);
-            return {
-                date: date.toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    year: "numeric"
-                }),
-                time: date.toLocaleTimeString("en-IN", {
-                    hour: "numeric",
-                    minute: "2-digit"
-                })
-            };
-        }
+            <main class="app-main" id="main-content">
+                <div class="container">
+                    <div class="page-heading">
+                        <h1>
+                            <%= isGuestMode ? "Shorten a URL" : "Your links" %>
+                        </h1>
+                        <p>
+                            <%= isGuestMode ? "Turn a long address into a link that is easy to share."
+                                : "Create, find, and manage your short links." %>
+                        </p>
+                    </div>
 
-        function formatEditableDate(value) {
-            return value ? new Date(value).toISOString().slice(0, 10) : "";
-        }
-
-        function formatEditableTime(value) {
-            return value ? new Date(value).toISOString().slice(11, 16) : "";
-        }
-    %>
-
-    <%- include("partials/header") %>
-
-    <main class="app-main" id="main-content">
-        <div class="container">
-            <div class="page-heading">
-                <h1><%= isGuestMode ? "Shorten a URL" : "Your links" %></h1>
-                <p><%= isGuestMode ? "Turn a long address into a link that is easy to share." : "Create, find, and manage your short links." %></p>
-            </div>
-
-            <% if (locals.error) { %>
-                <div class="form-error" role="alert"><%= locals.error %></div>
-            <% } %>
-
-            <% if (locals.successMessage || locals.url) { %>
-                <div class="success result-notice" role="status">
-                    <div class="result-notice-copy">
-                        <strong><%= locals.successMessage || "Short link ready" %></strong>
-                        <% if (locals.url) { %>
-                            <a id="shortUrl" href="<%= locals.url %>" target="_blank" rel="noopener noreferrer"><%= locals.url %></a>
+                    <% if (locals.error) { %>
+                        <div class="form-error" role="alert">
+                            <%= locals.error %>
+                        </div>
                         <% } %>
-                    </div>
-                    <% if (locals.url) { %>
-                        <button class="copy-btn" id="copyShortUrlButton" type="button">Copy link</button>
-                    <% } %>
-                </div>
-            <% } %>
 
-            <section class="link-creator" aria-label="Create a short link">
-                <form class="row-form" method="POST" action="/ui/urls" id="shortUrlForm">
-                    <label class="form-field form-field-url" for="urlInput">
-                        <span class="form-label">Destination URL</span>
-                        <input type="url" name="url" id="urlInput" placeholder="https://example.com/article" value="<%= locals.values?.url || '' %>" autocomplete="url" required>
-                    </label>
+                            <% if (locals.successMessage || locals.url) { %>
+                                <div class="success result-notice" role="status">
+                                    <div class="result-notice-copy">
+                                        <strong>
+                                            <%= locals.successMessage || "Short link ready" %>
+                                        </strong>
+                                        <% if (locals.url) { %>
+                                            <a id="shortUrl" href="<%= locals.url %>" target="_blank"
+                                                rel="noopener noreferrer">
+                                                <%= locals.url %>
+                                            </a>
+                                            <% } %>
+                                    </div>
+                                    <% if (locals.url) { %>
+                                        <button class="copy-btn" id="copyShortUrlButton" type="button">Copy
+                                            link</button>
+                                        <% } %>
+                                </div>
+                                <% } %>
 
-                    <label class="form-field" for="customShortIdInput">
-                        <span class="form-label">Custom alias <span class="optional-label">optional</span></span>
-                        <input type="text" name="customShortId" id="customShortIdInput" placeholder="campaign-26" value="<%= locals.values?.customShortId || '' %>" pattern="^[A-Za-z0-9_-]{6,20}$" title="Use 6 to 20 letters, numbers, hyphens, or underscores" autocomplete="off" spellcheck="false">
-                    </label>
+                                    <section class="link-creator" aria-label="Create a short link">
+                                        <form class="row-form" method="POST" action="/ui/urls" id="shortUrlForm">
+                                            <label class="form-field form-field-url" for="urlInput">
+                                                <span class="form-label">Destination URL</span>
+                                                <input type="url" name="url" id="urlInput"
+                                                    placeholder="https://example.com/article"
+                                                    value="<%= locals.values?.url || '' %>" autocomplete="url" required>
+                                            </label>
 
-                    <div class="form-field expiration-field-group" role="group" aria-labelledby="expirationLabel">
-                        <span class="form-label" id="expirationLabel">Expiration <span class="optional-label">optional</span></span>
-                        <div class="expiration-input-stack">
-                            <label class="picker-field">
-                                <span class="visually-hidden">Expiration date</span>
-                                <input type="date" name="expiresOn" id="expiresOnInput" value="<%= locals.values?.expiresOn || '' %>" min="<%= new Date().toISOString().slice(0, 10) %>" aria-label="Expiration date">
-                            </label>
-                            <label class="picker-field">
-                                <span class="visually-hidden">Expiration time</span>
-                                <input type="time" name="expiresAtTime" id="expiresAtTimeInput" value="<%= locals.values?.expiresAtTime || '' %>" step="60" aria-label="Expiration time">
-                            </label>
-                        </div>
-                    </div>
+                                            <label class="form-field" for="customShortIdInput">
+                                                <span class="form-label">Custom alias <span
+                                                        class="optional-label">optional</span></span>
+                                                <input type="text" name="customShortId" id="customShortIdInput"
+                                                    placeholder="article"
+                                                    value="<%= locals.values?.customShortId || '' %>"
+                                                    pattern="^[A-Za-z0-9_-]{6,20}$"
+                                                    title="Use 6 to 20 letters, numbers, hyphens, or underscores"
+                                                    autocomplete="off" spellcheck="false">
+                                            </label>
 
-                    <button type="submit">Shorten URL</button>
-                </form>
-            </section>
+                                            <div class="form-field expiration-field-group" role="group"
+                                                aria-labelledby="expirationLabel">
+                                                <span class="form-label" id="expirationLabel">Expiration <span
+                                                        class="optional-label">optional</span></span>
+                                                <div class="expiration-input-stack">
+                                                    <label class="picker-field">
+                                                        <span class="visually-hidden">Expiration date</span>
+                                                        <input type="date" name="expiresOn" id="expiresOnInput"
+                                                            value="<%= locals.values?.expiresOn || '' %>"
+                                                            min="<%= new Date().toISOString().slice(0, 10) %>"
+                                                            aria-label="Expiration date">
+                                                    </label>
+                                                    <label class="picker-field">
+                                                        <span class="visually-hidden">Expiration time</span>
+                                                        <input type="time" name="expiresAtTime" id="expiresAtTimeInput"
+                                                            value="<%= locals.values?.expiresAtTime || '' %>" step="60"
+                                                            aria-label="Expiration time">
+                                                    </label>
+                                                </div>
+                                            </div>
 
-            <% if (!isGuestMode) { %>
-                <section class="link-library" aria-labelledby="link-library-title">
-                    <div class="section-heading">
-                        <div>
-                            <h2 id="link-library-title">Saved links</h2>
-                            <p><%= locals.urls?.length || 0 %> shown with the current filters.</p>
-                        </div>
-                        <a href="/ui/profile">View analytics</a>
-                    </div>
+                                            <button type="submit">Shorten URL</button>
+                                        </form>
+                                    </section>
 
-                    <form class="dashboard-filters" method="GET" action="/ui">
-                        <div class="control-group control-group-wide">
-                            <label for="dashboardSearch">Search</label>
-                            <input id="dashboardSearch" type="search" name="search" placeholder="Alias or destination" value="<%= locals.dashboardFilters?.search || '' %>" autocomplete="off">
-                        </div>
+                                    <% if (!isGuestMode) { %>
+                                        <section class="link-library" aria-labelledby="link-library-title">
+                                            <div class="section-heading">
+                                                <div>
+                                                    <h2 id="link-library-title">Saved links</h2>
+                                                    <p>
+                                                        <%= locals.urls?.length || 0 %> shown with the current filters.
+                                                    </p>
+                                                </div>
+                                                <a href="/ui/profile">View analytics</a>
+                                            </div>
 
-                        <div class="control-group">
-                            <label for="dashboardStatus">Status</label>
-                            <select id="dashboardStatus" name="status">
-                                <option value="all" <%= locals.dashboardFilters?.status === "all" ? "selected" : "" %>>All</option>
-                                <option value="active" <%= locals.dashboardFilters?.status === "active" ? "selected" : "" %>>Active</option>
-                                <option value="inactive" <%= locals.dashboardFilters?.status === "inactive" ? "selected" : "" %>>No clicks</option>
-                                <option value="expired" <%= locals.dashboardFilters?.status === "expired" ? "selected" : "" %>>Expired</option>
-                                <option value="disabled" <%= locals.dashboardFilters?.status === "disabled" ? "selected" : "" %>>Disabled</option>
-                            </select>
-                        </div>
+                                            <form class="dashboard-filters" method="GET" action="/ui">
+                                                <div class="control-group control-group-wide">
+                                                    <label for="dashboardSearch">Search</label>
+                                                    <input id="dashboardSearch" type="search" name="search"
+                                                        placeholder="Alias or destination"
+                                                        value="<%= locals.dashboardFilters?.search || '' %>"
+                                                        autocomplete="off">
+                                                </div>
 
-                        <div class="control-group">
-                            <label for="dashboardSortBy">Sort by</label>
-                            <select id="dashboardSortBy" name="sortBy">
-                                <option value="createdAt" <%= locals.dashboardFilters?.sortBy === "createdAt" ? "selected" : "" %>>Created</option>
-                                <option value="clicks" <%= locals.dashboardFilters?.sortBy === "clicks" ? "selected" : "" %>>Clicks</option>
-                                <option value="shortId" <%= locals.dashboardFilters?.sortBy === "shortId" ? "selected" : "" %>>Alias</option>
-                                <option value="redirectUrl" <%= locals.dashboardFilters?.sortBy === "redirectUrl" ? "selected" : "" %>>Destination</option>
-                                <option value="expiresAt" <%= locals.dashboardFilters?.sortBy === "expiresAt" ? "selected" : "" %>>Expiration</option>
-                            </select>
-                        </div>
+                                                <div class="control-group">
+                                                    <label for="dashboardStatus">Status</label>
+                                                    <select id="dashboardStatus" name="status">
+                                                        <option value="all" <%=locals.dashboardFilters?.status==="all"
+                                                            ? "selected" : "" %>>All</option>
+                                                        <option value="active"
+                                                            <%=locals.dashboardFilters?.status==="active" ? "selected"
+                                                            : "" %>>Active</option>
+                                                        <option value="inactive"
+                                                            <%=locals.dashboardFilters?.status==="inactive" ? "selected"
+                                                            : "" %>>No clicks</option>
+                                                        <option value="expired"
+                                                            <%=locals.dashboardFilters?.status==="expired" ? "selected"
+                                                            : "" %>>Expired</option>
+                                                        <option value="disabled"
+                                                            <%=locals.dashboardFilters?.status==="disabled" ? "selected"
+                                                            : "" %>>Disabled</option>
+                                                    </select>
+                                                </div>
 
-                        <div class="control-group">
-                            <label for="dashboardOrder">Order</label>
-                            <select id="dashboardOrder" name="order">
-                                <option value="desc" <%= locals.dashboardFilters?.order === "desc" ? "selected" : "" %>>Descending</option>
-                                <option value="asc" <%= locals.dashboardFilters?.order === "asc" ? "selected" : "" %>>Ascending</option>
-                            </select>
-                        </div>
+                                                <div class="control-group">
+                                                    <label for="dashboardSortBy">Sort by</label>
+                                                    <select id="dashboardSortBy" name="sortBy">
+                                                        <option value="createdAt"
+                                                            <%=locals.dashboardFilters?.sortBy==="createdAt"
+                                                            ? "selected" : "" %>>Created</option>
+                                                        <option value="clicks"
+                                                            <%=locals.dashboardFilters?.sortBy==="clicks" ? "selected"
+                                                            : "" %>>Clicks</option>
+                                                        <option value="shortId"
+                                                            <%=locals.dashboardFilters?.sortBy==="shortId" ? "selected"
+                                                            : "" %>>Alias</option>
+                                                        <option value="redirectUrl"
+                                                            <%=locals.dashboardFilters?.sortBy==="redirectUrl"
+                                                            ? "selected" : "" %>>Destination</option>
+                                                        <option value="expiresAt"
+                                                            <%=locals.dashboardFilters?.sortBy==="expiresAt"
+                                                            ? "selected" : "" %>>Expiration</option>
+                                                    </select>
+                                                </div>
 
-                        <button type="submit">Apply</button>
-                        <a href="/ui" class="filter-reset">Reset</a>
-                    </form>
+                                                <div class="control-group">
+                                                    <label for="dashboardOrder">Order</label>
+                                                    <select id="dashboardOrder" name="order">
+                                                        <option value="desc" <%=locals.dashboardFilters?.order==="desc"
+                                                            ? "selected" : "" %>>Descending</option>
+                                                        <option value="asc" <%=locals.dashboardFilters?.order==="asc"
+                                                            ? "selected" : "" %>>Ascending</option>
+                                                    </select>
+                                                </div>
 
-                    <% if (locals.urls && locals.urls.length > 0) { %>
-                        <div class="table-wrap">
-                            <table class="dashboard-table links-table">
-                                <thead>
-                                    <tr>
-                                        <th>Short link</th>
-                                        <th>Destination</th>
-                                        <th>Clicks</th>
-                                        <th>Status</th>
-                                        <th>Expires</th>
-                                        <th><span class="visually-hidden">Actions</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <% locals.urls.forEach((el, index) => { %>
-                                        <% const expiresMeta = formatCompactDate(el.expiresAt); %>
-                                        <tr>
-                                            <td><a class="short-link" href="/<%= el.shortId %>" target="_blank" rel="noopener noreferrer">/<%= el.shortId %></a></td>
-                                            <td class="ellipsis-cell"><a href="<%= el.redirectUrl %>" target="_blank" rel="noopener noreferrer" title="<%= el.redirectUrl %>"><%= el.redirectUrl %></a></td>
-                                            <td class="numeric-cell"><%= el.visitHistory ? el.visitHistory.filter((visit) => !visit.isBot).length : 0 %></td>
-                                            <td><span class="status-badge status-<%= el.statusLabel %>"><%= el.statusLabel %></span></td>
-                                            <td class="date-cell">
-                                                <span class="date-primary"><%= expiresMeta.date %></span>
-                                                <% if (expiresMeta.time) { %>
-                                                    <span class="date-secondary"><%= expiresMeta.time %></span>
-                                                <% } %>
-                                            </td>
-                                            <td class="actions-cell">
-                                                <details class="edit-dropdown">
-                                                    <summary>Edit</summary>
-                                                    <div class="edit-dropdown-panel">
-                                                        <div class="edit-panel-heading">
-                                                            <div class="edit-target">
-                                                                <strong>Edit /<%= el.shortId %></strong>
-                                                                <span>Change its destination, alias, or expiration.</span>
-                                                            </div>
-                                                            <button class="edit-close" type="button">Close</button>
-                                                        </div>
+                                                <button type="submit">Apply</button>
+                                                <a href="/ui" class="filter-reset">Reset</a>
+                                            </form>
 
-                                                        <div class="edit-meta">
-                                                            <div>
-                                                                <strong>Created</strong>
-                                                                <span><%= formatDisplayDate(el.createdAt) %></span>
-                                                            </div>
-                                                            <div>
-                                                                <strong>Last updated</strong>
-                                                                <span><%= el.lastEditedAt ? formatDisplayDate(el.lastEditedAt) : "Not edited" %></span>
-                                                            </div>
-                                                        </div>
+                                            <% if (locals.urls && locals.urls.length> 0) { %>
+                                                <div class="table-wrap">
+                                                    <table class="dashboard-table links-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Short link</th>
+                                                                <th>Destination</th>
+                                                                <th>Clicks</th>
+                                                                <th>Status</th>
+                                                                <th>Expires</th>
+                                                                <th><span class="visually-hidden">Actions</span></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <% locals.urls.forEach((el, index)=> { %>
+                                                                <% const expiresMeta=formatCompactDate(el.expiresAt); %>
+                                                                    <tr>
+                                                                        <td><a class="short-link"
+                                                                                href="/<%= el.shortId %>"
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer">/<%=
+                                                                                    el.shortId %></a></td>
+                                                                        <td class="ellipsis-cell"><a
+                                                                                href="<%= el.redirectUrl %>"
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                title="<%= el.redirectUrl %>">
+                                                                                <%= el.redirectUrl %>
+                                                                            </a></td>
+                                                                        <td class="numeric-cell">
+                                                                            <%= el.visitHistory ?
+                                                                                el.visitHistory.filter((visit)=>
+                                                                                !visit.isBot).length : 0 %>
+                                                                        </td>
+                                                                        <td><span
+                                                                                class="status-badge status-<%= el.statusLabel %>">
+                                                                                <%= el.statusLabel %>
+                                                                            </span></td>
+                                                                        <td class="date-cell">
+                                                                            <span class="date-primary">
+                                                                                <%= expiresMeta.date %>
+                                                                            </span>
+                                                                            <% if (expiresMeta.time) { %>
+                                                                                <span class="date-secondary">
+                                                                                    <%= expiresMeta.time %>
+                                                                                </span>
+                                                                                <% } %>
+                                                                        </td>
+                                                                        <td class="actions-cell">
+                                                                            <details class="edit-dropdown">
+                                                                                <summary>Edit</summary>
+                                                                                <div class="edit-dropdown-panel">
+                                                                                    <div class="edit-panel-heading">
+                                                                                        <div class="edit-target">
+                                                                                            <strong>Edit /<%= el.shortId
+                                                                                                    %></strong>
+                                                                                            <span>Change its
+                                                                                                destination, alias, or
+                                                                                                expiration.</span>
+                                                                                        </div>
+                                                                                        <button class="edit-close"
+                                                                                            type="button">Close</button>
+                                                                                    </div>
 
-                                                        <form method="POST" action="/ui/urls/<%= el.shortId %>" class="manage-url-form">
-                                                            <label>
-                                                                <span>Custom alias</span>
-                                                                <input type="text" name="customShortId" value="<%= el.shortId %>" pattern="^[A-Za-z0-9_-]{6,20}$" required>
-                                                            </label>
-                                                            <label>
-                                                                <span>Destination URL</span>
-                                                                <input type="url" name="url" value="<%= el.redirectUrl %>" required>
-                                                            </label>
-                                                            <div class="form-field expiration-field-group" role="group" aria-labelledby="edit-expiration-label-<%= index %>">
-                                                                <span class="form-label" id="edit-expiration-label-<%= index %>">Expiration</span>
-                                                                <div class="expiration-input-stack">
-                                                                    <input type="date" name="expiresOn" value="<%= formatEditableDate(el.expiresAt) %>" min="<%= new Date().toISOString().slice(0, 10) %>" aria-label="Expiration date">
-                                                                    <input type="time" name="expiresAtTime" value="<%= formatEditableTime(el.expiresAt) %>" step="60" aria-label="Expiration time">
-                                                                </div>
-                                                            </div>
-                                                            <div class="edit-actions">
-                                                                <button type="submit">Save changes</button>
-                                                            </div>
-                                                        </form>
+                                                                                    <div class="edit-meta">
+                                                                                        <div>
+                                                                                            <strong>Created</strong>
+                                                                                            <span>
+                                                                                                <%= formatDisplayDate(el.createdAt)
+                                                                                                    %>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <strong>Last
+                                                                                                updated</strong>
+                                                                                            <span>
+                                                                                                <%= el.lastEditedAt ?
+                                                                                                    formatDisplayDate(el.lastEditedAt)
+                                                                                                    : "Not edited" %>
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <form method="POST"
+                                                                                        action="/ui/urls/<%= el.shortId %>"
+                                                                                        class="manage-url-form">
+                                                                                        <label>
+                                                                                            <span>Custom alias</span>
+                                                                                            <input type="text"
+                                                                                                name="customShortId"
+                                                                                                value="<%= el.shortId %>"
+                                                                                                pattern="^[A-Za-z0-9_-]{6,20}$"
+                                                                                                required>
+                                                                                        </label>
+                                                                                        <label>
+                                                                                            <span>Destination URL</span>
+                                                                                            <input type="url" name="url"
+                                                                                                value="<%= el.redirectUrl %>"
+                                                                                                required>
+                                                                                        </label>
+                                                                                        <div class="form-field expiration-field-group"
+                                                                                            role="group"
+                                                                                            aria-labelledby="edit-expiration-label-<%= index %>">
+                                                                                            <span class="form-label"
+                                                                                                id="edit-expiration-label-<%= index %>">Expiration</span>
+                                                                                            <div
+                                                                                                class="expiration-input-stack">
+                                                                                                <input type="date"
+                                                                                                    name="expiresOn"
+                                                                                                    value="<%= formatEditableDate(el.expiresAt) %>"
+                                                                                                    min="<%= new Date().toISOString().slice(0, 10) %>"
+                                                                                                    aria-label="Expiration date">
+                                                                                                <input type="time"
+                                                                                                    name="expiresAtTime"
+                                                                                                    value="<%= formatEditableTime(el.expiresAt) %>"
+                                                                                                    step="60"
+                                                                                                    aria-label="Expiration time">
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div class="edit-actions">
+                                                                                            <button type="submit">Save
+                                                                                                changes</button>
+                                                                                        </div>
+                                                                                    </form>
+                                                                                </div>
+                                                                            </details>
+
+                                                                            <form method="POST"
+                                                                                action="/ui/urls/<%= el.shortId %>/delete"
+                                                                                class="inline-delete-form">
+                                                                                <button type="submit"
+                                                                                    class="danger-button">Delete</button>
+                                                                            </form>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <% }) %>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <% } else if (locals.dashboardFilters && (locals.dashboardFilters.search
+                                                    || locals.dashboardFilters.status !=="all" )) { %>
+                                                    <div class="empty-state">
+                                                        <h3>No matching links</h3>
+                                                        <p>Try a different search or clear the filters.</p>
+                                                        <a href="/ui" class="secondary-action">Clear filters</a>
                                                     </div>
-                                                </details>
+                                                    <% } else { %>
+                                                        <div class="empty-state">
+                                                            <h3>No saved links yet</h3>
+                                                            <p>Your first signed-in link will appear here.</p>
+                                                        </div>
+                                                        <% } %>
+                                        </section>
+                                        <% } %>
+                </div>
+            </main>
 
-                                                <form method="POST" action="/ui/urls/<%= el.shortId %>/delete" class="inline-delete-form">
-                                                    <button type="submit" class="danger-button">Delete</button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                    <% }) %>
-                                </tbody>
-                            </table>
-                        </div>
-                    <% } else if (locals.dashboardFilters && (locals.dashboardFilters.search || locals.dashboardFilters.status !== "all")) { %>
-                        <div class="empty-state">
-                            <h3>No matching links</h3>
-                            <p>Try a different search or clear the filters.</p>
-                            <a href="/ui" class="secondary-action">Clear filters</a>
-                        </div>
-                    <% } else { %>
-                        <div class="empty-state">
-                            <h3>No saved links yet</h3>
-                            <p>Your first signed-in link will appear here.</p>
-                        </div>
-                    <% } %>
-                </section>
-            <% } %>
-        </div>
-    </main>
+            <%- include("partials/footer") %>
 
-    <%- include("partials/footer") %>
+                <script nonce="<%= cspNonce %>">
+                    async function copyUrl() {
+                        const shortUrlElement = document.getElementById("shortUrl");
+                        if (!shortUrlElement) return;
 
-    <script nonce="<%= cspNonce %>">
-        async function copyUrl() {
-            const shortUrlElement = document.getElementById("shortUrl");
-            if (!shortUrlElement) return;
+                        const copyButton = document.getElementById("copyShortUrlButton");
 
-            const copyButton = document.getElementById("copyShortUrlButton");
+                        try {
+                            await navigator.clipboard.writeText(shortUrlElement.innerText);
+                            if (copyButton) copyButton.textContent = "Copied";
+                        } catch {
+                            if (copyButton) copyButton.textContent = "Copy failed";
+                        }
 
-            try {
-                await navigator.clipboard.writeText(shortUrlElement.innerText);
-                if (copyButton) copyButton.textContent = "Copied";
-            } catch {
-                if (copyButton) copyButton.textContent = "Copy failed";
-            }
+                        window.setTimeout(() => {
+                            if (copyButton) copyButton.textContent = "Copy link";
+                        }, 1800);
+                    }
 
-            window.setTimeout(() => {
-                if (copyButton) copyButton.textContent = "Copy link";
-            }, 1800);
-        }
+                    function validateForm() {
+                        const urlInput = document.getElementById("urlInput");
+                        const url = urlInput.value;
+                        urlInput.setCustomValidity("");
 
-        function validateForm() {
-            const urlInput = document.getElementById("urlInput");
-            const url = urlInput.value;
-            urlInput.setCustomValidity("");
+                        try {
+                            const parsedUrl = new URL(url);
+                            if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error();
+                            return true;
+                        } catch {
+                            urlInput.setCustomValidity("Enter a full URL starting with http:// or https://");
+                            urlInput.reportValidity();
+                            return false;
+                        }
+                    }
 
-            try {
-                const parsedUrl = new URL(url);
-                if (!["http:", "https:"].includes(parsedUrl.protocol)) throw new Error();
-                return true;
-            } catch {
-                urlInput.setCustomValidity("Enter a full URL starting with http:// or https://");
-                urlInput.reportValidity();
-                return false;
-            }
-        }
+                    document.getElementById("copyShortUrlButton")?.addEventListener("click", copyUrl);
 
-        document.getElementById("copyShortUrlButton")?.addEventListener("click", copyUrl);
+                    const shortUrlForm = document.getElementById("shortUrlForm");
+                    if (shortUrlForm) {
+                        document.getElementById("urlInput")?.addEventListener("input", (event) => {
+                            event.currentTarget.setCustomValidity("");
+                        });
+                        shortUrlForm.addEventListener("submit", (event) => {
+                            if (!validateForm()) event.preventDefault();
+                        });
+                    }
 
-        const shortUrlForm = document.getElementById("shortUrlForm");
-        if (shortUrlForm) {
-            document.getElementById("urlInput")?.addEventListener("input", (event) => {
-                event.currentTarget.setCustomValidity("");
-            });
-            shortUrlForm.addEventListener("submit", (event) => {
-                if (!validateForm()) event.preventDefault();
-            });
-        }
+                    document.querySelectorAll(".inline-delete-form").forEach((form) => {
+                        form.addEventListener("submit", (event) => {
+                            if (!window.confirm("Delete this short link? This cannot be undone.")) {
+                                event.preventDefault();
+                            }
+                        });
+                    });
 
-        document.querySelectorAll(".inline-delete-form").forEach((form) => {
-            form.addEventListener("submit", (event) => {
-                if (!window.confirm("Delete this short link? This cannot be undone.")) {
-                    event.preventDefault();
-                }
-            });
-        });
+                    document.querySelectorAll(".edit-close").forEach((button) => {
+                        button.addEventListener("click", () => {
+                            button.closest("details")?.removeAttribute("open");
+                        });
+                    });
 
-        document.querySelectorAll(".edit-close").forEach((button) => {
-            button.addEventListener("click", () => {
-                button.closest("details")?.removeAttribute("open");
-            });
-        });
+                    function getCurrentDateParts() {
+                        const now = new Date();
+                        const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
+                        return {
+                            date: localNow.toISOString().slice(0, 10),
+                            time: localNow.toISOString().slice(11, 16)
+                        };
+                    }
 
-        function getCurrentDateParts() {
-            const now = new Date();
-            const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60 * 1000);
-            return {
-                date: localNow.toISOString().slice(0, 10),
-                time: localNow.toISOString().slice(11, 16)
-            };
-        }
+                    function syncTimeLimit(dateInput, timeInput) {
+                        if (!dateInput || !timeInput) return;
 
-        function syncTimeLimit(dateInput, timeInput) {
-            if (!dateInput || !timeInput) return;
+                        const { date, time } = getCurrentDateParts();
+                        const effectiveDate = dateInput.value || date;
+                        if (effectiveDate === date) {
+                            timeInput.min = time;
+                        } else {
+                            timeInput.removeAttribute("min");
+                        }
+                    }
 
-            const { date, time } = getCurrentDateParts();
-            const effectiveDate = dateInput.value || date;
-            if (effectiveDate === date) {
-                timeInput.min = time;
-            } else {
-                timeInput.removeAttribute("min");
-            }
-        }
+                    const expiresOnInput = document.getElementById("expiresOnInput");
+                    const expiresAtTimeInput = document.getElementById("expiresAtTimeInput");
+                    syncTimeLimit(expiresOnInput, expiresAtTimeInput);
 
-        const expiresOnInput = document.getElementById("expiresOnInput");
-        const expiresAtTimeInput = document.getElementById("expiresAtTimeInput");
-        syncTimeLimit(expiresOnInput, expiresAtTimeInput);
+                    if (expiresOnInput && expiresAtTimeInput) {
+                        expiresOnInput.addEventListener("input", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
+                        expiresAtTimeInput.addEventListener("focus", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
+                    }
 
-        if (expiresOnInput && expiresAtTimeInput) {
-            expiresOnInput.addEventListener("input", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
-            expiresAtTimeInput.addEventListener("focus", () => syncTimeLimit(expiresOnInput, expiresAtTimeInput));
-        }
+                    document.querySelectorAll(".manage-url-form").forEach((form) => {
+                        const dateInput = form.querySelector('input[name="expiresOn"]');
+                        const timeInput = form.querySelector('input[name="expiresAtTime"]');
+                        syncTimeLimit(dateInput, timeInput);
 
-        document.querySelectorAll(".manage-url-form").forEach((form) => {
-            const dateInput = form.querySelector('input[name="expiresOn"]');
-            const timeInput = form.querySelector('input[name="expiresAtTime"]');
-            syncTimeLimit(dateInput, timeInput);
-
-            if (dateInput && timeInput) {
-                dateInput.addEventListener("input", () => syncTimeLimit(dateInput, timeInput));
-                timeInput.addEventListener("focus", () => syncTimeLimit(dateInput, timeInput));
-            }
-        });
-    </script>
+                        if (dateInput && timeInput) {
+                            dateInput.addEventListener("input", () => syncTimeLimit(dateInput, timeInput));
+                            timeInput.addEventListener("focus", () => syncTimeLimit(dateInput, timeInput));
+                        }
+                    });
+                </script>
 </body>
 
 </html>
