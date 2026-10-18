@@ -10,6 +10,7 @@ import cookieParser from "cookie-parser";
 import { checkAuth } from "./middleware/auth.middleware.js";
 import requestLogger from "./middleware/requestLogger.middleware.js";
 import errorHandler from "./middleware/errorHandler.middleware.js";
+import enforceSameOrigin from "./middleware/sameOrigin.middleware.js";
 import { installConsoleLogger, installProcessErrorHandlers } from "./util/logger.util.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,6 +51,7 @@ export function createApp() {
     app.use(express.json());
     app.use(express.urlencoded({ extended: false }));
     app.use(cookieParser());
+    app.use(enforceSameOrigin);
     app.use(checkAuth);
     app.use(requestLogger);
     app.use((req, res, next) => {

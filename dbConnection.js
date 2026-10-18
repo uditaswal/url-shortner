@@ -22,7 +22,7 @@ export default async function connectDB(
     dbURL,
     dbName,
     accountLabel = "default",
-    { syncIndexes = true } = {}
+    { syncIndexes = false } = {}
 ) {
     if (typeof dbURL !== "string" || !dbURL.trim()) {
         throw new Error("MongoDB connection URL is required.");
@@ -38,7 +38,11 @@ export default async function connectDB(
         mongoose.set("sanitizeFilter", true);
         await mongoose.connect(dbURL, {
             dbName,
-            serverSelectionTimeoutMS: 15000
+            serverSelectionTimeoutMS: 15000,
+            autoIndex:
+                !process.env.CI &&
+                process.env.APP_ENV !== "production" &&
+                process.env.NODE_ENV !== "production"
         });
         await mongoose.connection.db.admin().command({ ping: 1 });
 

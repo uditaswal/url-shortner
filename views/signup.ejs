@@ -8,68 +8,80 @@
 <body>
     <%- include("partials/header") %>
 
-    <main class="app-main auth-main" id="main-content">
-        <div class="narrow-container">
-            <div class="page-heading">
-                <h1>Create an account</h1>
-                <p>Save, edit, and understand every link you create.</p>
-            </div>
+        <main class="app-main auth-main" id="main-content">
+            <div class="narrow-container">
+                <div class="page-heading">
+                    <h1>Create an account</h1>
+                    <p>Save, edit, and understand every link you create.</p>
+                </div>
 
-            <section class="auth-panel" aria-label="Create account form">
-                <% if (locals.error) { %>
-                    <div class="form-error" role="alert"><%= locals.error %></div>
-                <% } %>
-
-                <form action="/ui/auth/signup" method="POST">
-                    <div class="form-group">
-                        <label for="signupName">Full name</label>
-                        <input type="text" name="name" id="signupName" placeholder="John Doe" value="<%= locals.values?.name || '' %>" autocomplete="name" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="signupUsername">Username</label>
-                        <input type="text" name="username" id="signupUsername" placeholder="john_doe" value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$" title="Use 3 to 20 lowercase letters, numbers, or underscores" autocomplete="username" spellcheck="false" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="signupPassword">Password</label>
-                        <div class="password-field">
-                            <input type="password" name="password" id="signupPassword" placeholder="Create a password" autocomplete="new-password" required>
-                            <button type="button" class="password-toggle" data-password-target="signupPassword" aria-label="Show password">Show</button>
+                <section class="auth-panel" aria-label="Create account form">
+                    <% if (locals.error) { %>
+                        <div class="form-error" role="alert">
+                            <%= locals.error %>
                         </div>
-                    </div>
+                        <% } %>
 
-                    <p class="form-help">Use a unique username and a password with at least 8 characters, uppercase, lowercase, and a number.</p>
+                            <form action="/ui/auth/signup" method="POST">
+                                <div class="form-group">
+                                    <label for="signupName">Full name</label>
+                                    <input type="text" name="name" id="signupName" placeholder="John Doe"
+                                        value="<%= locals.values?.name || '' %>" autocomplete="name" required>
+                                </div>
 
-                    <button class="full-button" type="submit">Create account</button>
+                                <div class="form-group">
+                                    <label for="signupUsername">Username</label>
+                                    <input type="text" name="username" id="signupUsername" placeholder="john_doe"
+                                        value="<%= locals.values?.username || '' %>" pattern="^[a-z0-9_]{3,20}$"
+                                        title="Use 3 to 20 lowercase letters, numbers, or underscores"
+                                        autocomplete="username" spellcheck="false" required>
+                                </div>
 
-                    <p class="legal-consent">
-                        By creating an account, you agree to the <a href="/ui/terms">Terms</a> and <a href="/ui/acceptable-use">Acceptable Use Policy</a>, and acknowledge the <a href="/ui/privacy">Privacy Notice</a>.
-                    </p>
-                </form>
-            </section>
+                                <div class="form-group">
+                                    <label for="signupPassword">Password</label>
+                                    <div class="password-field">
+                                        <input type="password" name="password" id="signupPassword"
+                                            placeholder="Create a password" autocomplete="new-password" required>
+                                        <button type="button" class="password-toggle"
+                                            data-password-target="signupPassword"
+                                            aria-label="Show password">Show</button>
+                                    </div>
+                                </div>
 
-            <p class="auth-footer">
-                Already have an account? <a href="/ui/login">Sign in</a>
-            </p>
-        </div>
-    </main>
+                                <p class="form-help">Use a unique username and a password with at least 8 characters,
+                                    uppercase, lowercase, and a number.</p>
 
-    <%- include("partials/footer") %>
+                                <button class="full-button" type="submit">Create account</button>
 
-    <script nonce="<%= cspNonce %>">
-        document.querySelectorAll(".password-toggle").forEach((button) => {
-            button.addEventListener("click", () => {
-                const input = document.getElementById(button.dataset.passwordTarget);
-                if (!input) return;
+                                <p class="legal-consent">
+                                    By creating an account, you agree to the <a href="/ui/terms">Terms</a> and <a
+                                        href="/ui/acceptable-use">Acceptable Use Policy</a>, and acknowledge the <a
+                                        href="/ui/privacy">Privacy Notice</a>.
+                                </p>
+                            </form>
+                </section>
 
-                const isPassword = input.type === "password";
-                input.type = isPassword ? "text" : "password";
-                button.textContent = isPassword ? "Hide" : "Show";
-                button.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
-            });
-        });
-    </script>
+                <p class="auth-footer">
+                    Already have an account? <a href="/ui/login">Sign in</a>
+                </p>
+            </div>
+        </main>
+
+        <%- include("partials/footer") %>
+
+            <script nonce="<%= cspNonce %>">
+                document.querySelectorAll(".password-toggle").forEach((button) => {
+                    button.addEventListener("click", () => {
+                        const input = document.getElementById(button.dataset.passwordTarget);
+                        if (!input) return;
+
+                        const isPassword = input.type === "password";
+                        input.type = isPassword ? "text" : "password";
+                        button.textContent = isPassword ? "Hide" : "Show";
+                        button.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+                    });
+                });
+            </script>
 </body>
 
 </html>

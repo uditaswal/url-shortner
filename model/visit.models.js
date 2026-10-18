@@ -31,6 +31,10 @@ const visitSchema = new mongoose.Schema(
 
 visitSchema.index({ urlId: 1, timestamp: -1 }, { name: "url_visit_time_idx" });
 visitSchema.index({ urlId: 1, isBot: 1 }, { name: "url_visit_bot_idx" });
+visitSchema.index(
+    { timestamp: 1 },
+    { expireAfterSeconds: 90 * 24 * 60 * 60, name: "visit_retention_ttl_idx" }
+);
 
 const Visit = mongoose.model("visit", visitSchema);
 

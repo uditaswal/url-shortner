@@ -7,8 +7,8 @@
         </a>
         <% if (locals.user) { %>
             <div class="header-user-area">
-                <a href="/ui" class="nav-link" <%= ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
-                <a href="/ui/profile" class="nav-link" <%= ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
+                <a href="/ui" class="nav-link" <%- ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
+                <a href="/ui/profile" class="nav-link" <%- ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
                 <span class="user-chip" title="Signed in as <%= locals.user.name %>">@<%= locals.user.username %></span>
                 <form action="/ui/auth/logout" method="POST" class="logout-form">
                     <button type="submit" class="logout-btn">Sign out</button>
@@ -39,8 +39,8 @@
                 <div class="mobile-menu-panel">
                     <% if (locals.user) { %>
                         <span class="mobile-menu-user">@<%= locals.user.username %></span>
-                        <a href="/ui" <%= ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
-                        <a href="/ui/profile" <%= ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
+                        <a href="/ui" <%- ["/", "/ui"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Links</a>
+                        <a href="/ui/profile" <%- ["/profile", "/ui/profile"].includes(locals.currentPath) ? 'aria-current="page"' : '' %>>Analytics</a>
                         <form action="/ui/auth/logout" method="POST" class="mobile-menu-form">
                             <button type="submit" class="mobile-menu-button danger-text">Sign out</button>
                         </form>

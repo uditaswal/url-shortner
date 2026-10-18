@@ -93,6 +93,8 @@
                                                     </label>
                                                 </div>
                                             </div>
+                                            <input type="hidden" name="expiresAt" id="expiresAtInput"
+                                                value="<%= locals.values?.expiresAt || '' %>">
 
                                             <button type="submit">Shorten URL</button>
                                         </form>
@@ -291,6 +293,8 @@
                                                                                                     aria-label="Expiration time">
                                                                                             </div>
                                                                                         </div>
+                                                                                        <input type="hidden" name="expiresAt"
+                                                                                            value="<%= el.expiresAt ? new Date(el.expiresAt).toISOString() : '' %>">
                                                                                         <div class="edit-actions">
                                                                                             <button type="submit">Save
                                                                                                 changes</button>
@@ -374,6 +378,7 @@
                             event.currentTarget.setCustomValidity("");
                         });
                         shortUrlForm.addEventListener("submit", (event) => {
+                            syncExpirationInstant(expiresOnInput, expiresAtTimeInput, document.getElementById("expiresAtInput"));
                             if (!validateForm()) event.preventDefault();
                         });
                     }
@@ -413,6 +418,17 @@
                         }
                     }
 
+                    function syncExpirationInstant(dateInput, timeInput, instantInput) {
+                        if (!instantInput) return;
+                        if (!dateInput?.value && !timeInput?.value) {
+                            instantInput.value = "";
+                            return;
+                        }
+
+                        if (!dateInput?.value || !timeInput?.value) return;
+                        instantInput.value = new Date(`${dateInput.value}T${timeInput.value}`).toISOString();
+                    }
+
                     const expiresOnInput = document.getElementById("expiresOnInput");
                     const expiresAtTimeInput = document.getElementById("expiresAtTimeInput");
                     syncTimeLimit(expiresOnInput, expiresAtTimeInput);
@@ -430,6 +446,9 @@
                         if (dateInput && timeInput) {
                             dateInput.addEventListener("input", () => syncTimeLimit(dateInput, timeInput));
                             timeInput.addEventListener("focus", () => syncTimeLimit(dateInput, timeInput));
+                            form.addEventListener("submit", () => {
+                                syncExpirationInstant(dateInput, timeInput, form.querySelector('input[name="expiresAt"]'));
+                            });
                         }
                     });
                 </script>

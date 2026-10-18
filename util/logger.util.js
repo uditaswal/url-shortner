@@ -54,12 +54,22 @@ const CONSOLE_LEVEL_MAP = {
     debug: "debug"
 };
 
+const SENSITIVE_KEY = /password|secret|token|authorization|cookie|api[-_]?key|credential/i;
+const CONNECTION_CREDENTIAL = /([a-z][a-z\d+.-]*:\/\/)[^\s@/:]+:[^\s@]+@/gi;
+const INLINE_SECRET = /\b(password|secret|token|api[-_]?key|authorization)\s*[:=]\s*[^\s,;)}\]]+/gi;
+
+function redactString(value) {
+    return String(value)
+        .replace(CONNECTION_CREDENTIAL, "$1[redacted]@")
+        .replace(INLINE_SECRET, "$1=[redacted]");
+}
+
 function serializeValue(value) {
     if (value instanceof Error) {
         return {
             name: value.name,
-            message: value.message,
-            stack: value.stack
+            message: redactString(value.message),
+            stack: redactString(value.stack || "")
         };
     }
 
@@ -69,6 +79,23 @@ function serializeValue(value) {
 
     if (typeof value === "bigint") {
         return value.toString();
+    }
+
+    if (typeof value === "string") {
+        return redactString(value);
+    }
+
+    if (Array.isArray(value)) {
+        return value.map(serializeValue);
+    }
+
+    if (value && typeof value === "object") {
+        return Object.fromEntries(
+            Object.entries(value).map(([key, item]) => [
+                key,
+                SENSITIVE_KEY.test(key) ? "[redacted]" : serializeValue(item)
+            ])
+        );
     }
 
     return value;
@@ -86,22 +113,11 @@ export function logHttpRequest(req, res, durationMs, response = null) {
         http: {
             method: req.method,
             path: req.path,
-            url: req.originalUrl,
             statusCode: res.statusCode,
             responseTimeMs: durationMs,
-            ip: req.ip || req.socket?.remoteAddress || null,
-            userAgent: req.get("user-agent") || null,
-            contentLength: res.getHeader("content-length") || null,
-            referer: req.get("referer") || null,
-            query: req.query,
-            params: req.params
+            contentLength: res.getHeader("content-length") || null
         },
-        response,
-        user: req.user
-            ? {
-                  id: req.user._id || req.user.id || null
-              }
-            : null
+        response: serializeValue(response)
     });
 }
 
@@ -110,8 +126,8 @@ export function logError(error, context = {}) {
         error instanceof Error
             ? {
                   name: error.name,
-                  message: error.message,
-                  stack: error.stack
+                  message: redactString(error.message),
+                  stack: redactString(error.stack || "")
               }
             : {
                   message: typeof error === "string" ? error : "Unknown error",
@@ -123,7 +139,7 @@ export function logError(error, context = {}) {
         event: "application_error",
         source: context.source || "application",
         error: normalizedError,
-        context: context.details || null
+        context: serializeValue(context.details || null)
     });
 }
 
@@ -172,22 +188,23 @@ export function installProcessErrorHandlers() {
         return;
     }
 
-    process.on("uncaughtException", (error) => {
+    const handleFatalError = (error, type) => {
         logError(error, {
             source: "process",
             details: {
-                type: "uncaughtException"
+                type
             }
         });
+        process.exitCode = 1;
+        setTimeout(() => process.exit(1), 100).unref();
+    };
+
+    process.on("uncaughtException", (error) => {
+        handleFatalError(error, "uncaughtException");
     });
 
     process.on("unhandledRejection", (reason) => {
-        logError(reason, {
-            source: "process",
-            details: {
-                type: "unhandledRejection"
-            }
-        });
+        handleFatalError(reason, "unhandledRejection");
     });
 
     Object.defineProperty(process, "__loggerErrorHandlersInstalled", {

@@ -1,0 +1,12 @@
+node_modules
+.git
+.github
+.env
+.env.*
+!.env.example
+logs
+coverage
+.cache
+.tmp
+tmp
+issues.md

@@ -82,14 +82,14 @@ export async function handleUserSignup(req, res) {
     if (!isStrongPassword(password || "")) {
         if (isJsonRequest(req)) {
             return res.status(400).json({
-                error: "Password must be at least 8 characters and include uppercase, lowercase, and a number."
+                error: "Password must be 8 to 72 bytes and include uppercase, lowercase, and a number."
             });
         }
 
         return renderSignup(
             res,
             { name, username },
-            "Password must be at least 8 characters and include uppercase, lowercase, and a number."
+            "Password must be 8 to 72 bytes and include uppercase, lowercase, and a number."
         );
     }
 
@@ -170,6 +170,7 @@ export async function handleUserLogin(req, res) {
         isPasswordValid = await user.comparePassword(password);
     } else if (user.password === password) {
         user.password = password;
+        user.markModified("password");
         await user.save();
         isPasswordValid = true;
     }

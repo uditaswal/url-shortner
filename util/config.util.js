@@ -15,10 +15,28 @@ function getRequiredEnv(key) {
     return value.trim();
 }
 
+function getPublicBaseUrl() {
+    const value = process.env.PUBLIC_BASE_URL?.trim();
+    if (!value) {
+        if (isProduction) {
+            throw new Error("Missing required environment variable: PUBLIC_BASE_URL");
+        }
+        return null;
+    }
+
+    const parsed = new URL(value);
+    if (!/^https?:$/.test(parsed.protocol)) {
+        throw new Error("PUBLIC_BASE_URL must use http or https.");
+    }
+
+    return parsed.origin;
+}
+
 const config = {
     appEnv,
     isProduction,
     port: Number(process.env.PORT || 8000),
+    publicBaseUrl: getPublicBaseUrl(),
     jwtSecretKey: getRequiredEnv(`${envPrefix}_JWT_SECRET_KEY`),
     db: {
         url: getRequiredEnv(`${envPrefix}_DB_URL`),
