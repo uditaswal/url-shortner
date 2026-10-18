@@ -2,9 +2,7 @@
 
 A full-stack URL shortener built with Node.js, Express, MongoDB, and server-rendered EJS. It supports guest links, account-based link management, expiration, click analytics, admin moderation, and a documented JSON API.
 
-[Source code](https://github.com/uditaswal/url-shortner) · [Run the demo locally](#run-locally) · [API documentation](#api-documentation)
-
-> A public deployment is not currently linked. The local setup below runs the complete application, including the interactive API documentation.
+[Live demo](https://url-shortner-ugkr.onrender.com/) · [Source code](https://github.com/uditaswal/url-shortner) · [Run locally](#run-locally) · [API documentation](#api-documentation)
 
 ## Screenshots
 
@@ -60,7 +58,7 @@ Controllers
         |
         v
 Mongoose models
-  users -> URLs with visit history -> rate-limit records
+  users -> URLs -> separate visit events -> rate-limit records
         |
         v
 MongoDB
@@ -81,9 +79,9 @@ The main route groups are:
 
 EJS keeps the project small and lets the browser UI reuse the same Express application as the API. It avoids a separate frontend build and deployment, but it offers less client-side interactivity than a dedicated SPA.
 
-### Visit history stored with each link
+### Separate, best-effort visit analytics
 
-Visit records are embedded in the URL document, which makes per-link analytics straightforward and keeps the current data model easy to understand. This is suitable for a portfolio-scale service; high-traffic links would eventually need a separate event collection or analytics pipeline to avoid unbounded document growth.
+New visit records live in a separate indexed collection, so a popular short link does not grow into an unbounded MongoDB document. Redirects do not wait for analytics persistence: if a visit write fails, the error is logged and the visitor still reaches the destination. This deliberately prioritises redirect availability over perfect analytics delivery; a queue or event stream would be the next step when lossless tracking becomes a requirement.
 
 ### Signed authentication tokens with database validation
 
@@ -103,13 +101,13 @@ Canonical `/ui/*` and `/api/*` routes coexist with older paths. This avoids brea
 
 ## Tech Stack
 
-- **Runtime:** Node.js 20+
+- **Runtime:** Node.js 24 LTS
 - **Web framework:** Express 5
 - **Views:** EJS and CSS
 - **Database:** MongoDB with Mongoose
 - **Authentication:** JSON Web Tokens and bcrypt
 - **Security:** Helmet, Content Security Policy, server-side validation, and express-rate-limit
-- **Logging:** Winston with rotating log files
+- **Logging:** Winston with rotating log files plus structured stdout in deployed environments
 - **API documentation:** Swagger UI and OpenAPI annotations
 - **Testing:** Supertest with a MongoDB-backed integration scenario
 - **Tooling:** pnpm, ESLint, Prettier, and Nodemon
@@ -119,7 +117,7 @@ Canonical `/ui/*` and `/api/*` routes coexist with older paths. This avoids brea
 
 ### Prerequisites
 
-- Node.js 20 or later
+- Node.js 24 LTS
 - pnpm
 - A local MongoDB server or a MongoDB connection string
 
@@ -223,6 +221,7 @@ Run the project checks locally:
 
 ```bash
 pnpm lint
+pnpm test:unit
 pnpm test
 ```
 
@@ -241,7 +240,9 @@ pnpm db:check   Verify database connectivity without changing data
 pnpm lint       Check JavaScript and EJS files
 pnpm lint:fix   Apply supported lint fixes
 pnpm format     Format supported source files
-pnpm test       Run the MongoDB-backed integration scenario
+pnpm test:unit  Run database-free reliability checks
+pnpm test:integration Run the MongoDB-backed integration scenario
+pnpm test       Run unit checks followed by the integration scenario
 ```
 
 ## Project Structure

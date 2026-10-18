@@ -10,19 +10,25 @@ const [
     { default: connectDB },
     { default: UrlModel },
     { default: User },
-    { default: RateLimitEntry }
+    { default: RateLimitEntry },
+    { default: Visit },
+    { default: MongoRateLimitStore }
 ] = await Promise.all([
     import("../app.js"),
     import("../dbConnection.js"),
     import("../model/url.models.js"),
     import("../model/user.models.js"),
-    import("../model/rateLimitEntry.models.js")
+    import("../model/rateLimitEntry.models.js"),
+    import("../model/visit.models.js"),
+    import("../util/rateLimitStore.util.js")
 ]);
 
 const SAMPLE_URL = "https://example.com/docs";
 const CUSTOM_SHORT_ID = `alias${Date.now().toString().slice(-6)}`;
 const UPDATED_CUSTOM_SHORT_ID = `${CUSTOM_SHORT_ID}_v2`;
 const TEST_USERNAME = `tester_${Date.now()}`;
+const FIRST_USER_USERNAME = `owner_a_${Date.now().toString().slice(-10)}`;
+const SECOND_USER_USERNAME = `owner_b_${Date.now().toString().slice(-10)}`;
 const TEST_DB_NAME = process.env.TEST_DB_NAME;
 
 function toDateTimeLocalValue(date) {
@@ -48,8 +54,31 @@ async function resetDatabase() {
     await Promise.all([
         UrlModel.deleteMany({}),
         User.deleteMany({}),
-        RateLimitEntry.deleteMany({})
+        RateLimitEntry.deleteMany({}),
+        Visit.deleteMany({})
     ]);
+}
+
+async function waitFor(check, message, timeoutMs = 2000) {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+        if (await check()) return;
+        await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+
+    throw new Error(message);
+}
+
+async function createOrdinaryUser(app, username, name) {
+    const response = await request(app)
+        .post("/api/auth/signup")
+        .send({ name, username, password: "StrongPass1" })
+        .expect(201);
+
+    return {
+        user: await User.findOne({ username }),
+        cookie: response.headers["set-cookie"][0].split(";")[0]
+    };
 }
 
 async function run() {
@@ -78,14 +107,36 @@ async function run() {
             .get("/ui/login")
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Login/);
+                assert.match(response.text, /Sign in/);
             });
 
         await request(app)
             .get("/ui/signup")
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Create Account/);
+                assert.match(response.text, /Create an account/);
+            });
+
+        await request(app)
+            .post("/api/urls")
+            .send({
+                url: "https://example.com/time-only",
+                expiresAtTime: EXPIRE_SOON_TIME
+            })
+            .expect(400)
+            .expect((response) => {
+                assert.equal(response.body.error, "Choose both an expiration date and time.");
+            });
+
+        await request(app)
+            .post("/api/urls")
+            .send({
+                url: "https://example.com/date-only",
+                expiresOn: EXPIRE_SOON_DATE
+            })
+            .expect(400)
+            .expect((response) => {
+                assert.equal(response.body.error, "Choose both an expiration date and time.");
             });
 
         await request(app)
@@ -108,6 +159,41 @@ async function run() {
 
         const guestUrl = await UrlModel.findOne({ redirectUrl: SAMPLE_URL, createdBy: null });
         assert.ok(guestUrl);
+
+        const anotherGuestLink = await request(app)
+            .post("/api/urls")
+            .send({ url: SAMPLE_URL })
+            .expect(201);
+        assert.notEqual(anotherGuestLink.body.url.shortId, guestUrl.shortId);
+
+        const guestAlias = "guest-custom";
+        const customGuestLink = await request(app)
+            .post("/api/urls")
+            .send({ url: SAMPLE_URL, customShortId: guestAlias, expiresAt: EXPIRE_SOON })
+            .expect(201);
+        assert.equal(customGuestLink.body.url.shortId, guestAlias);
+        assert.ok(customGuestLink.body.url.expiresAt);
+        assert.equal((await UrlModel.findById(guestUrl._id)).expiresAt, null);
+
+        await request(app)
+            .post("/ui/urls")
+            .type("form")
+            .send({ url: SAMPLE_URL, customShortId: "guest-other" })
+            .expect(200)
+            .expect((response) => {
+                assert.doesNotMatch(response.text, /This URL already exists/);
+                assert.match(response.text, /id="shortUrl"[^>]*\/guest-other/);
+            });
+
+        await request(app)
+            .post("/api/urls")
+            .send({ url: SAMPLE_URL, customShortId: guestAlias })
+            .expect(409)
+            .expect((response) => {
+                assert.match(response.body.error, /alias is already taken/);
+                assert.ok(response.body.suggestedAlias);
+                assert.equal(response.body.url, undefined);
+            });
 
         await request(app)
             .post("/api/auth/signup")
@@ -170,6 +256,99 @@ async function run() {
 
         const authCookie = loginResponse.headers["set-cookie"][0].split(";")[0];
 
+        const firstOwner = await createOrdinaryUser(app, FIRST_USER_USERNAME, "First Owner");
+        const secondOwner = await createOrdinaryUser(app, SECOND_USER_USERNAME, "Second Owner");
+        assert.equal(firstOwner.user.isAdmin, false);
+        assert.equal(secondOwner.user.isAdmin, false);
+
+        const firstOwnerAlias = `owner-a-${Date.now().toString().slice(-6)}`;
+        const secondOwnerAlias = `owner-b-${Date.now().toString().slice(-6)}`;
+
+        await request(app)
+            .post("/api/urls")
+            .set("Cookie", firstOwner.cookie)
+            .send({
+                url: "https://example.com/owner-a",
+                customShortId: firstOwnerAlias
+            })
+            .expect(201);
+
+        await request(app)
+            .post("/api/urls")
+            .set("Cookie", secondOwner.cookie)
+            .send({
+                url: "https://example.com/owner-b",
+                customShortId: secondOwnerAlias
+            })
+            .expect(201);
+
+        await request(app)
+            .post("/api/urls")
+            .set("Cookie", secondOwner.cookie)
+            .set("Host", "sho.rt")
+            .send({
+                url: "https://example.com/alias-conflict",
+                customShortId: firstOwnerAlias
+            })
+            .expect(409)
+            .expect((response) => {
+                assert.match(response.body.error, /already taken/);
+                assert.match(response.body.suggestedAlias, /^owner-a-\d{6}-[a-z2-9]{4}$/);
+                assert.equal(
+                    response.body.suggestedShortUrl,
+                    `http://sho.rt/${response.body.suggestedAlias}`
+                );
+            });
+
+        await request(app)
+            .get(`/api/urls/${firstOwnerAlias}/analytics`)
+            .set("Cookie", secondOwner.cookie)
+            .expect(404);
+
+        await request(app)
+            .put(`/api/urls/${firstOwnerAlias}`)
+            .set("Cookie", secondOwner.cookie)
+            .send({
+                url: "https://example.com/unauthorized-edit",
+                customShortId: firstOwnerAlias
+            })
+            .expect(404);
+
+        await request(app)
+            .delete(`/api/urls/${firstOwnerAlias}`)
+            .set("Cookie", secondOwner.cookie)
+            .expect(404);
+
+        await request(app)
+            .patch(`/api/admin/urls/${firstOwnerAlias}/moderation`)
+            .set("Cookie", secondOwner.cookie)
+            .send({ action: "disable" })
+            .expect(403);
+
+        await request(app)
+            .get("/api/dashboard")
+            .set("Cookie", firstOwner.cookie)
+            .expect(200)
+            .expect((response) => {
+                assert.deepEqual(
+                    response.body.urls.map((url) => url.shortId),
+                    [firstOwnerAlias]
+                );
+            });
+
+        await request(app)
+            .get("/api/dashboard")
+            .set("Cookie", secondOwner.cookie)
+            .expect(200)
+            .expect((response) => {
+                assert.deepEqual(
+                    response.body.urls.map((url) => url.shortId),
+                    [secondOwnerAlias]
+                );
+            });
+
+        assert.ok(await UrlModel.exists({ shortId: firstOwnerAlias, createdBy: firstOwner.user._id }));
+
         await request(app)
             .post("/api/urls")
             .set("Cookie", authCookie)
@@ -186,6 +365,16 @@ async function run() {
         assert.notEqual(String(userUrl._id), String(guestUrl._id));
 
         const shortId = userUrl.shortId;
+
+        const originalVisitCreate = Visit.create;
+        Visit.create = () => Promise.reject(new Error("Simulated analytics write failure"));
+        try {
+            await request(app).get(`/${shortId}`).expect(302).expect("Location", SAMPLE_URL);
+            await new Promise((resolve) => setImmediate(resolve));
+        } finally {
+            Visit.create = originalVisitCreate;
+        }
+        assert.equal(await Visit.countDocuments({ urlId: userUrl._id }), 0);
 
         await request(app)
             .post("/api/urls")
@@ -243,11 +432,18 @@ async function run() {
             .expect(302)
             .expect("Location", SAMPLE_URL);
 
+        await waitFor(
+            async () => (await Visit.countDocuments({ urlId: userUrl._id })) === 2,
+            "Redirect analytics were not persisted asynchronously."
+        );
+        const recordedVisits = await Visit.find({ urlId: userUrl._id }).sort({ timestamp: 1 });
+        assert.equal(recordedVisits.length, 2);
+        assert.equal(recordedVisits[0].isBot, true);
+        assert.equal(recordedVisits[1].country, "IN");
+        assert.equal(recordedVisits[1].isBot, false);
+
         const updatedUrl = await UrlModel.findOne({ _id: userUrl._id });
-        assert.equal(updatedUrl.visitHistory.length, 2);
-        assert.equal(updatedUrl.visitHistory[0].isBot, true);
-        assert.equal(updatedUrl.visitHistory[1].country, "IN");
-        assert.equal(updatedUrl.visitHistory[1].isBot, false);
+        assert.equal(updatedUrl.visitHistory.length, 0);
 
         await request(app)
             .get(`/api/urls/${shortId}/analytics`)
@@ -276,9 +472,9 @@ async function run() {
             .set("Cookie", authCookie)
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Profile & URL Stats/);
-                assert.match(response.text, /Bot Visits Filtered/);
-                assert.match(response.text, /Admin Moderation/);
+                assert.match(response.text, /Analytics/);
+                assert.match(response.text, /Bots excluded/);
+                assert.match(response.text, /Admin moderation/);
             });
 
         await request(app)
@@ -286,7 +482,7 @@ async function run() {
             .set("Cookie", authCookie)
             .expect(200)
             .expect((response) => {
-                assert.match(response.text, /Profile & URL Stats/);
+                assert.match(response.text, /Analytics/);
             });
 
         await request(app)
@@ -310,6 +506,34 @@ async function run() {
 
         const deletedCustomUrl = await UrlModel.findOne({ shortId: UPDATED_CUSTOM_SHORT_ID });
         assert.equal(deletedCustomUrl, null);
+
+        const simulatedNow = new Date(Date.now() + 2 * 60_000);
+        const concurrentStore = new MongoRateLimitStore(
+            "concurrency-test",
+            () => simulatedNow
+        );
+        concurrentStore.init({ windowMs: 60_000 });
+        await RateLimitEntry.create({
+            key: "concurrency-test:shared-client",
+            totalHits: 99,
+            resetTime: new Date(Date.now() + 60_000)
+        });
+
+        const concurrentResults = await Promise.all(
+            Array.from({ length: 25 }, () => concurrentStore.increment("shared-client"))
+        );
+        const finalRateLimitEntry = await RateLimitEntry.findOne({
+            key: "concurrency-test:shared-client"
+        });
+        assert.equal(finalRateLimitEntry.totalHits, 25);
+        assert.deepEqual(
+            concurrentResults.map((result) => result.totalHits).sort((a, b) => a - b),
+            Array.from({ length: 25 }, (_value, index) => index + 1)
+        );
+        assert.equal(
+            new Set(concurrentResults.map((result) => result.resetTime.getTime())).size,
+            1
+        );
 
         await request(app).post("/api/auth/logout").set("Cookie", authCookie).expect(200);
 
