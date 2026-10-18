@@ -1,6 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import URL from "../model/url.models.js";
+import { attachVisitCounts, getCountryStats } from "../util/analytics.util.js";
 import { getLegalPage } from "../util/legalPages.util.js";
 
 const apiStaticRouter = express.Router();
@@ -64,7 +65,7 @@ function applyDashboardFilters(urls, filters) {
         items = items.filter(
             (item) =>
                 item.statusLabel === "active" &&
-                (item.visitHistory || []).filter((visit) => !visit.isBot).length === 0
+                item.visitCount === 0
         );
     } else if (filters.status !== "all") {
         items = items.filter((item) => item.statusLabel === filters.status);
@@ -75,8 +76,8 @@ function applyDashboardFilters(urls, filters) {
         let right;
 
         if (filters.sortBy === "clicks") {
-            left = (a.visitHistory || []).filter((visit) => !visit.isBot).length;
-            right = (b.visitHistory || []).filter((visit) => !visit.isBot).length;
+            left = a.visitCount || 0;
+            right = b.visitCount || 0;
         } else if (filters.sortBy === "createdAt" || filters.sortBy === "expiresAt") {
             left = a[filters.sortBy] ? new Date(a[filters.sortBy]).getTime() : 0;
             right = b[filters.sortBy] ? new Date(b[filters.sortBy]).getTime() : 0;
@@ -96,7 +97,11 @@ function applyDashboardFilters(urls, filters) {
 async function getDashboardPayload(req) {
     const filters = getDashboardState(req.query);
     const allUsers = req.user
-        ? (await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })).map(toDashboardItem)
+        ? (
+              await attachVisitCounts(
+                  await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })
+              )
+          ).map(toDashboardItem)
         : [];
 
     return {
@@ -111,35 +116,19 @@ async function renderDashboard(req, res) {
 }
 
 async function getProfilePayload(req) {
-    const userUrls = (await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })).map(
-        toDashboardItem
-    );
+    const userUrls = (
+        await attachVisitCounts(
+            await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })
+        )
+    ).map(toDashboardItem);
     const totalUrls = userUrls.length;
-    const totalClicks = userUrls.reduce(
-        (sum, item) => sum + (item.visitHistory?.filter((visit) => !visit.isBot).length || 0),
-        0
-    );
+    const totalClicks = userUrls.reduce((sum, item) => sum + (item.visitCount || 0), 0);
     const botFilteredClicks = userUrls.reduce(
-        (sum, item) => sum + (item.visitHistory?.filter((visit) => visit.isBot).length || 0),
+        (sum, item) => sum + (item.botVisitCount || 0),
         0
     );
     const activeUrls = userUrls.filter((item) => item.statusLabel === "active").length;
-    const countryStatsMap = new Map();
-
-    userUrls.forEach((url) => {
-        (url.visitHistory || []).forEach((visit) => {
-            if (visit.isBot) {
-                return;
-            }
-
-            const country = visit.country || "Unknown";
-            countryStatsMap.set(country, (countryStatsMap.get(country) || 0) + 1);
-        });
-    });
-
-    const countryStats = Array.from(countryStatsMap.entries())
-        .map(([country, clicks]) => ({ country, clicks }))
-        .sort((a, b) => b.clicks - a.clicks);
+    const countryStats = await getCountryStats(userUrls);
 
     const flaggedUrls = req.user.isAdmin
         ? (

@@ -1,6 +1,13 @@
 import mongoose from "mongoose";
 import URL from "../model/url.models.js";
-import { nanoid } from "nanoid";
+import { customAlphabet, nanoid } from "nanoid";
+import {
+    attachVisitCounts,
+    deleteVisitsForUrl,
+    getUrlAnalytics,
+    recordVisit
+} from "../util/analytics.util.js";
+import { logError } from "../util/logger.util.js";
 import {
     isSafePlainInput,
     isValidShortId,
@@ -19,6 +26,31 @@ function buildShortUrl(req, shortId) {
     return `${req.protocol}://${req.get("host")}/${shortId}`;
 }
 
+const createAliasSuffix = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 4);
+
+async function suggestAvailableAlias(requestedAlias) {
+    const base = normalizeShortIdInput(requestedAlias).slice(0, 15) || "short-link";
+
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+        const suggestion = `${base}-${createAliasSuffix()}`;
+        if (!(await URL.exists({ shortId: suggestion }))) {
+            return suggestion;
+        }
+    }
+
+    return nanoid(8);
+}
+
+async function buildAliasConflict(req, requestedAlias) {
+    const suggestedAlias = await suggestAvailableAlias(requestedAlias);
+
+    return {
+        error: `That custom alias is already taken. Try "${suggestedAlias}".`,
+        suggestedAlias,
+        suggestedShortUrl: buildShortUrl(req, suggestedAlias)
+    };
+}
+
 function buildUrlResponse(req, entry) {
     return {
         shortId: entry.shortId,
@@ -31,7 +63,9 @@ function buildUrlResponse(req, entry) {
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
         lastEditedAt: entry.lastEditedAt,
-        visitCount: (entry.visitHistory || []).filter((visit) => !visit.isBot).length
+        visitCount:
+            entry.visitCount ??
+            (entry.visitHistory || []).filter((visit) => !visit.isBot).length
     };
 }
 
@@ -42,7 +76,7 @@ function getVisitorCountry(req) {
         req.get("cloudfront-viewer-country") ||
         req.headers["x-country-code"];
 
-    if (!country || country === "XX" || country === "T1") {
+    if (!country || !/^[A-Za-z]{2}$/.test(String(country)) || country === "XX") {
         return "Unknown";
     }
 
@@ -97,9 +131,11 @@ async function loadDashboardUrls(req) {
         return [];
     }
 
-    const urls = await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 });
+    const urls = await attachVisitCounts(
+        await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })
+    );
     return urls.map((item) => ({
-        ...item.toObject(),
+        ...item,
         statusLabel: getUrlStatus(item)
     }));
 }
@@ -123,16 +159,14 @@ async function renderHomeWithState(req, res, extras = {}, statusCode = 200) {
     });
 }
 
-function normalizeCreatePayload(body = {}) {
+export function normalizeCreatePayload(body = {}) {
     const expiresOnInput = normalizeDateTimeInput(body.expiresOn || "");
     const expiresAtTimeInput = normalizeDateTimeInput(body.expiresAtTime || "");
     const legacyExpiresAtInput = normalizeDateTimeInput(body.expiresAt || "");
     const hasSplitExpirationInput = Boolean(expiresOnInput || expiresAtTimeInput);
 
-    const today = new Date();
-    const todayDateInput = today.toISOString().slice(0, 10);
-    const resolvedExpiresOnInput = expiresOnInput || (expiresAtTimeInput ? todayDateInput : "");
-    const resolvedExpiresAtTimeInput = expiresAtTimeInput || (expiresOnInput ? "00:00" : "");
+    const resolvedExpiresOnInput = expiresOnInput;
+    const resolvedExpiresAtTimeInput = expiresAtTimeInput;
     const expiresAtInput = hasSplitExpirationInput
         ? [resolvedExpiresOnInput, resolvedExpiresAtTimeInput].filter(Boolean).join(" ")
         : legacyExpiresAtInput;
@@ -154,12 +188,12 @@ function normalizeCreatePayload(body = {}) {
         rawExpiresAtTimeInput: expiresAtTimeInput,
         hasSplitExpirationInput,
         expiresAt,
-        usedDefaultDate: Boolean(!expiresOnInput && expiresAtTimeInput),
-        usedDefaultTime: Boolean(expiresOnInput && !expiresAtTimeInput)
+        missingExpirationDate: Boolean(!expiresOnInput && expiresAtTimeInput),
+        missingExpirationTime: Boolean(expiresOnInput && !expiresAtTimeInput)
     };
 }
 
-function validateCreatePayload(payload) {
+export function validateCreatePayload(payload) {
     if (!payload.url) {
         return "URL is required.";
     }
@@ -172,12 +206,8 @@ function validateCreatePayload(payload) {
         return "Short ID must be 6 to 20 characters and can only use letters, numbers, hyphens, or underscores.";
     }
 
-    if (payload.usedDefaultDate) {
-        const currentTime = new Date();
-        const currentTimeValue = `${String(currentTime.getHours()).padStart(2, "0")}:${String(currentTime.getMinutes()).padStart(2, "0")}`;
-        if (payload.expiresAtTimeInput > currentTimeValue) {
-            return "When only time is entered, it cannot be later than the current system time.";
-        }
+    if (payload.missingExpirationDate || payload.missingExpirationTime) {
+        return "Choose both an expiration date and time.";
     }
 
     if (
@@ -243,7 +273,9 @@ export async function generateShortId(req, res) {
         }
 
         const ownerId = getOwnerId(req);
-        let urlEntry = await URL.findOne({ redirectUrl: payload.url, createdBy: ownerId });
+        let urlEntry = ownerId
+            ? await URL.findOne({ redirectUrl: payload.url, createdBy: ownerId })
+            : null;
 
         if (urlEntry) {
             if (payload.customShortId && urlEntry.shortId !== payload.customShortId) {
@@ -282,18 +314,17 @@ export async function generateShortId(req, res) {
         const shortId = payload.customShortId || nanoid(8);
         const existingShortId = await URL.findOne({ shortId });
         if (existingShortId) {
+            const conflict = await buildAliasConflict(req, shortId);
             if (isJsonRequest(req)) {
-                return res.status(409).json({
-                    error: "That custom short ID is already taken. Try another one."
-                });
+                return res.status(409).json(conflict);
             }
 
             return renderHomeWithState(
                 req,
                 res,
                 {
-                    error: "That custom short ID is already taken. Try another one.",
-                    values: payload
+                    error: conflict.error,
+                    values: { ...payload, customShortId: conflict.suggestedAlias }
                 },
                 409
             );
@@ -303,7 +334,6 @@ export async function generateShortId(req, res) {
             shortId,
             redirectUrl: payload.url,
             expiresAt: payload.expiresAt,
-            visitHistory: [],
             createdBy: ownerId
         });
 
@@ -326,10 +356,10 @@ export async function generateShortId(req, res) {
     } catch (err) {
         if (err?.code === 11000) {
             const payload = normalizeCreatePayload(req.body);
-            const existingUrl = await URL.findOne({
-                redirectUrl: payload.url,
-                createdBy: getOwnerId(req)
-            });
+            const ownerId = getOwnerId(req);
+            const existingUrl = ownerId
+                ? await URL.findOne({ redirectUrl: payload.url, createdBy: ownerId })
+                : null;
 
             if (existingUrl) {
                 if (isJsonRequest(req)) {
@@ -360,18 +390,17 @@ export async function generateShortId(req, res) {
             }
 
             if (payload.customShortId) {
+                const conflict = await buildAliasConflict(req, payload.customShortId);
                 if (isJsonRequest(req)) {
-                    return res.status(409).json({
-                        error: "That custom short ID is already taken. Try another one."
-                    });
+                    return res.status(409).json(conflict);
                 }
 
                 return renderHomeWithState(
                     req,
                     res,
                     {
-                        error: "That custom short ID is already taken. Try another one.",
-                        values: payload
+                        error: conflict.error,
+                        values: { ...payload, customShortId: conflict.suggestedAlias }
                     },
                     409
                 );
@@ -448,18 +477,17 @@ export async function updateShortUrl(req, res) {
         _id: mongoose.trusted({ $ne: existingEntry._id })
     });
     if (duplicateAlias) {
+        const conflict = await buildAliasConflict(req, payload.customShortId);
         if (isJsonRequest(req)) {
-            return res.status(409).json({
-                error: "That short ID is already taken. Try another one."
-            });
+            return res.status(409).json(conflict);
         }
 
         return renderHomeWithState(
             req,
             res,
             {
-                error: "That short ID is already taken. Try another one.",
-                values: payload
+                error: conflict.error,
+                values: { ...payload, customShortId: conflict.suggestedAlias }
             },
             409
         );
@@ -521,6 +549,8 @@ export async function deleteShortUrl(req, res) {
             404
         );
     }
+
+    await deleteVisitsForUrl(deletedEntry._id);
 
     if (isJsonRequest(req)) {
         return res.status(200).json({
@@ -609,19 +639,17 @@ export async function redirectToShortURL(req, res) {
         });
     }
 
-    await URL.findOneAndUpdate(
-        { shortId },
-        {
-            $push: {
-                visitHistory: {
-                    timestamp: Date.now(),
-                    country: getVisitorCountry(req),
-                    isBot: isBotRequest(req),
-                    userAgent: req.get("user-agent") || null
-                }
-            }
-        }
-    );
+    recordVisit(entry._id, {
+        timestamp: Date.now(),
+        country: getVisitorCountry(req),
+        isBot: isBotRequest(req),
+        userAgent: req.get("user-agent") || null
+    }).catch((error) => {
+        logError(error, {
+            source: "redirect-analytics",
+            details: { shortId }
+        });
+    });
 
     return res.redirect(entry.redirectUrl);
 }
@@ -641,18 +669,17 @@ export async function getShortURLAnalytics(req, res) {
         });
     }
 
-    const botVisits = entry.visitHistory.filter((visit) => visit.isBot).length;
-    const nonBotVisits = entry.visitHistory.length - botVisits;
+    const analytics = await getUrlAnalytics(entry);
 
     return res.json({
         shortId,
         redirectUrl: entry.redirectUrl,
         shortUrl: buildShortUrl(req, shortId),
-        count: nonBotVisits,
-        totalVisitsIncludingBots: entry.visitHistory.length,
-        botVisits,
+        count: analytics.humanVisits,
+        totalVisitsIncludingBots: analytics.totalVisits,
+        botVisits: analytics.botVisits,
         status: getUrlStatus(entry),
         expiresAt: entry.expiresAt,
-        visitHistory: entry.visitHistory
+        visitHistory: analytics.visitHistory
     });
 }

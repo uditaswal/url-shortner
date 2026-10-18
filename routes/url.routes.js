@@ -127,6 +127,7 @@ function asHtml(req, _res, next) {
  *           nullable: true
  *         visitHistory:
  *           type: array
+ *           description: Up to the 500 most recent visit records. Aggregate counts include all stored visits.
  *           items:
  *             type: object
  */

@@ -55,7 +55,11 @@ const urlSchema = new mongoose.Schema(
 urlSchema.index({ shortId: 1 }, { unique: true, name: "shortId_unique_idx" });
 urlSchema.index(
     { redirectUrl: 1, createdBy: 1 },
-    { unique: true, name: "redirectUrl_owner_unique_idx" }
+    {
+        unique: true,
+        name: "redirectUrl_owner_unique_idx",
+        partialFilterExpression: { createdBy: { $type: "objectId" } }
+    }
 );
 
 const URL = mongoose.model("url", urlSchema);

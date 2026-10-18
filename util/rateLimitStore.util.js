@@ -1,9 +1,9 @@
-import mongoose from "mongoose";
 import RateLimitEntry from "../model/rateLimitEntry.models.js";
 
 export default class MongoRateLimitStore {
-    constructor(prefix = "rate-limit") {
+    constructor(prefix = "rate-limit", now = () => new Date()) {
         this.prefix = prefix;
+        this.now = now;
         this.windowMs = 60 * 1000;
     }
 
@@ -29,37 +29,38 @@ export default class MongoRateLimitStore {
 
     async increment(key) {
         const scopedKey = this.buildKey(key);
-        const now = new Date();
+        const now = this.now();
         const nextResetTime = new Date(now.getTime() + this.windowMs);
-
-        let entry = await RateLimitEntry.findOneAndUpdate(
+        const update = [
             {
-                key: scopedKey,
-                resetTime: mongoose.trusted({ $gt: now })
-            },
-            {
-                $inc: { totalHits: 1 }
-            },
-            {
-                returnDocument: "after"
-            }
-        );
-
-        if (!entry) {
-            entry = await RateLimitEntry.findOneAndUpdate(
-                { key: scopedKey },
-                {
-                    $set: {
-                        totalHits: 1,
-                        resetTime: nextResetTime
+                $set: {
+                    totalHits: {
+                        $cond: [
+                            { $gt: ["$resetTime", now] },
+                            { $add: [{ $ifNull: ["$totalHits", 0] }, 1] },
+                            1
+                        ]
+                    },
+                    resetTime: {
+                        $cond: [{ $gt: ["$resetTime", now] }, "$resetTime", nextResetTime]
                     }
-                },
-                {
-                    upsert: true,
-                    returnDocument: "after",
-                    setDefaultsOnInsert: true
                 }
-            );
+            }
+        ];
+
+        let entry;
+        try {
+            entry = await RateLimitEntry.findOneAndUpdate({ key: scopedKey }, update, {
+                upsert: true,
+                updatePipeline: true,
+                returnDocument: "after"
+            });
+        } catch (error) {
+            if (error?.code !== 11000) throw error;
+            entry = await RateLimitEntry.findOneAndUpdate({ key: scopedKey }, update, {
+                updatePipeline: true,
+                returnDocument: "after"
+            });
         }
 
         return {

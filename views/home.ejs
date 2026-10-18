@@ -204,9 +204,7 @@
                                                                                 <%= el.redirectUrl %>
                                                                             </a></td>
                                                                         <td class="numeric-cell">
-                                                                            <%= el.visitHistory ?
-                                                                                el.visitHistory.filter((visit)=>
-                                                                                !visit.isBot).length : 0 %>
+                                                                            <%= el.visitCount || 0 %>
                                                                         </td>
                                                                         <td><span
                                                                                 class="status-badge status-<%= el.statusLabel %>">

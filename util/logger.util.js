@@ -1,20 +1,40 @@
 import fs from "fs";
+import os from "os";
 import path from "path";
 import util from "util";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 
-const logsDir = path.resolve("logs");
-fs.mkdirSync(logsDir, { recursive: true });
+const isVercel = process.env.VERCEL === "1";
+const useStdout =
+    isVercel ||
+    process.env.APP_ENV === "production" ||
+    process.env.NODE_ENV === "production";
+const logsDir = process.env.LOG_DIR
+    ? path.resolve(process.env.LOG_DIR)
+    : isVercel
+      ? path.join(os.tmpdir(), "url-shortener-logs")
+      : path.resolve("logs");
 
-const transport = new DailyRotateFile({
-    dirname: logsDir,
-    filename: "app-%DATE%.log",
-    datePattern: "DD-MMM-YYYY",
-    maxFiles: "15d",
-    maxSize: "100m",
-    zippedArchive: true
-});
+function buildTransports() {
+    fs.mkdirSync(logsDir, { recursive: true });
+    const transports = [
+        new DailyRotateFile({
+            dirname: logsDir,
+            filename: "app-%DATE%.log",
+            datePattern: "DD-MMM-YYYY",
+            maxFiles: "15d",
+            maxSize: "100m",
+            zippedArchive: true
+        })
+    ];
+
+    if (useStdout) {
+        transports.push(new winston.transports.Console());
+    }
+
+    return transports;
+}
 
 const logger = winston.createLogger({
     level: "info",
@@ -23,7 +43,7 @@ const logger = winston.createLogger({
         winston.format.errors({ stack: true }),
         winston.format.json()
     ),
-    transports: [transport]
+    transports: buildTransports()
 });
 
 const CONSOLE_LEVEL_MAP = {
@@ -133,7 +153,9 @@ export function installConsoleLogger() {
                 }
             });
 
-            originalConsole[method](...args);
+            if (!useStdout) {
+                originalConsole[method](...args);
+            }
         };
     });
 

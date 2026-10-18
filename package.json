@@ -2,9 +2,15 @@
     "name": "02_urlshortnerv2",
     "version": "1.0.0",
     "description": "",
+    "packageManager": "pnpm@10.34.7",
+    "engines": {
+        "node": ">=24 <25"
+    },
     "main": "index.js",
     "scripts": {
-        "test": "node test/app.integration.test.js",
+        "test": "node test/reliability.unit.test.js && node test/app.integration.test.js",
+        "test:unit": "node test/reliability.unit.test.js",
+        "test:integration": "node test/app.integration.test.js",
         "db:check": "node scripts/check-db-connection.js",
         "start": "node index.js",
         "dev": "nodemon index.js",
