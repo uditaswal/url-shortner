@@ -18,11 +18,7 @@ const errorHandler = (err, req, res, next) => {
         details: {
             method: req.method,
             path: req.path,
-            url: req.originalUrl,
-            ip: req.ip || req.socket?.remoteAddress || null,
-            userId: req.user?._id || req.user?.id || null,
-            query: req.query,
-            params: req.params
+            statusCode: err.statusCode || err.status || 500
         }
     });
 

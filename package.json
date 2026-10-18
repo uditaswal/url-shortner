@@ -12,6 +12,7 @@
         "test:unit": "node test/reliability.unit.test.js",
         "test:integration": "node test/app.integration.test.js",
         "db:check": "node scripts/check-db-connection.js",
+        "db:sync-indexes": "node scripts/sync-indexes.js",
         "start": "node index.js",
         "dev": "nodemon index.js",
         "lint": "eslint .",

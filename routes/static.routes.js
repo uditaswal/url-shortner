@@ -7,6 +7,7 @@ import { getLegalPage } from "../util/legalPages.util.js";
 const apiStaticRouter = express.Router();
 const uiStaticRouter = express.Router();
 const legacyStaticRouter = express.Router();
+const LINK_LIST_LIMIT = 100;
 
 /**
  * @swagger
@@ -99,7 +100,9 @@ async function getDashboardPayload(req) {
     const allUsers = req.user
         ? (
               await attachVisitCounts(
-                  await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })
+                  await URL.find({ createdBy: req.user._id })
+                      .sort({ createdAt: -1 })
+                      .limit(LINK_LIST_LIMIT)
               )
           ).map(toDashboardItem)
         : [];
@@ -118,7 +121,7 @@ async function renderDashboard(req, res) {
 async function getProfilePayload(req) {
     const userUrls = (
         await attachVisitCounts(
-            await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 })
+            await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 }).limit(LINK_LIST_LIMIT)
         )
     ).map(toDashboardItem);
     const totalUrls = userUrls.length;

@@ -156,6 +156,7 @@ Set the test and production values in `.env`:
 ```env
 PORT=3000
 APP_ENV=test
+PUBLIC_BASE_URL=http://localhost:3000
 
 TEST_DB_URL=mongodb://127.0.0.1:27017/
 TEST_DB_NAME=url-shortner-test
@@ -169,11 +170,18 @@ PROD_JWT_SECRET_KEY=replace-with-a-different-production-secret
 ```
 
 When `APP_ENV=test`, the application reads the `TEST_*` variables. When `APP_ENV=production`, it reads the `PROD_*` variables.
+Set `PUBLIC_BASE_URL` to the canonical public origin in production so generated links cannot be influenced by request headers.
 
 ### 3. Check the database connection
 
 ```bash
 pnpm db:check
+```
+
+Apply deliberate database-index changes outside normal application startup:
+
+```bash
+pnpm db:sync-indexes
 ```
 
 ### 4. Start the application

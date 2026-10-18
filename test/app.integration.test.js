@@ -36,7 +36,9 @@ function toDateTimeLocalValue(date) {
     return localDate.toISOString().slice(0, 16);
 }
 
-const EXPIRE_SOON = toDateTimeLocalValue(new Date(Date.now() + 60 * 60 * 1000));
+const EXPIRE_SOON_DATE_OBJECT = new Date(Date.now() + 60 * 60 * 1000);
+const EXPIRE_SOON = toDateTimeLocalValue(EXPIRE_SOON_DATE_OBJECT);
+const EXPIRE_SOON_INSTANT = EXPIRE_SOON_DATE_OBJECT.toISOString();
 const [EXPIRE_SOON_DATE, EXPIRE_SOON_TIME] = EXPIRE_SOON.split("T");
 
 function buildDatabaseUrl(baseUrl, dbName) {
@@ -130,6 +132,25 @@ async function run() {
 
         await request(app)
             .post("/api/urls")
+            .send({ url: "https://example.com/reserved", customShortId: "profile" })
+            .expect(400)
+            .expect((response) => {
+                assert.match(response.body.error, /reserved/);
+            });
+
+        await request(app)
+            .post("/api/auth/login")
+            .set("Origin", "https://untrusted.example")
+            .set("Sec-Fetch-Site", "cross-site")
+            .send({ username: "nobody", password: "StrongPass1" })
+            .expect(403)
+            .expect((response) => {
+                assert.equal(response.body.error, "Cross-site requests are not allowed.");
+                assert.equal(response.headers["set-cookie"], undefined);
+            });
+
+        await request(app)
+            .post("/api/urls")
             .send({
                 url: "https://example.com/date-only",
                 expiresOn: EXPIRE_SOON_DATE
@@ -169,7 +190,7 @@ async function run() {
         const guestAlias = "guest-custom";
         const customGuestLink = await request(app)
             .post("/api/urls")
-            .send({ url: SAMPLE_URL, customShortId: guestAlias, expiresAt: EXPIRE_SOON })
+            .send({ url: SAMPLE_URL, customShortId: guestAlias, expiresAt: EXPIRE_SOON_INSTANT })
             .expect(201);
         assert.equal(customGuestLink.body.url.shortId, guestAlias);
         assert.ok(customGuestLink.body.url.expiresAt);
@@ -206,6 +227,22 @@ async function run() {
             .expect((response) => {
                 assert.equal(response.body.user.username, TEST_USERNAME);
             });
+
+        const legacyUsername = `legacy_${Date.now().toString().slice(-10)}`;
+        await User.collection.insertOne({
+            name: "Legacy User",
+            username: legacyUsername,
+            password: "StrongPass1",
+            isAdmin: false,
+            tokenVersion: 0,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        });
+        await request(app)
+            .post("/api/auth/login")
+            .send({ username: legacyUsername, password: "StrongPass1" })
+            .expect(200);
+        assert.match((await User.findOne({ username: legacyUsername })).password, /^\$2[aby]\$\d{2}\$/);
 
         await request(app)
             .post("/user")
@@ -383,7 +420,8 @@ async function run() {
                 url: "https://example.com/custom",
                 customShortId: CUSTOM_SHORT_ID,
                 expiresOn: EXPIRE_SOON_DATE,
-                expiresAtTime: EXPIRE_SOON_TIME
+                expiresAtTime: EXPIRE_SOON_TIME,
+                expiresAt: EXPIRE_SOON_INSTANT
             })
             .expect(201)
             .expect((response) => {
@@ -405,7 +443,8 @@ async function run() {
                 customShortId: UPDATED_CUSTOM_SHORT_ID,
                 url: "https://example.com/custom-updated",
                 expiresOn: EXPIRE_SOON_DATE,
-                expiresAtTime: EXPIRE_SOON_TIME
+                expiresAtTime: EXPIRE_SOON_TIME,
+                expiresAt: EXPIRE_SOON_INSTANT
             })
             .expect(200)
             .expect((response) => {
@@ -535,7 +574,14 @@ async function run() {
             1
         );
 
-        await request(app).post("/api/auth/logout").set("Cookie", authCookie).expect(200);
+        const logoutResponse = await request(app)
+            .post("/ui/auth/logout")
+            .set("Cookie", authCookie)
+            .set("Origin", "https://untrusted.example")
+            .set("Sec-Fetch-Site", "cross-site")
+            .expect(302)
+            .expect("Location", "/login");
+        assert.match(logoutResponse.headers["set-cookie"]?.[0] || "", /^uid=;/);
 
         await request(app)
             .get("/profile")

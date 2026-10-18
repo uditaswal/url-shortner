@@ -27,15 +27,9 @@ const legalPages = {
                 ]
             },
             {
-                heading: "Service providers",
-                paragraphs: [
-                    "Trusted service providers may process limited information when helping to host, secure, maintain, or support the service. They process information under their own terms and privacy notices and may operate in other countries."
-                ]
-            },
-            {
                 heading: "Retention",
                 paragraphs: [
-                    "Account information is generally kept while your account is active. Link and usage information is kept while needed to provide the service, resolve disputes, meet legal obligations, or protect users. Information may be deleted or anonymised when it is no longer required, and valid deletion requests are handled subject to applicable law."
+                    "Account information is generally kept while your account is active. Visit analytics are retained for up to 90 days. Link information is kept while needed to provide the service, resolve disputes, meet legal obligations, or protect users. Information may be deleted or anonymised when it is no longer required, and valid deletion requests are handled subject to applicable law."
                 ]
             },
             {
@@ -53,7 +47,7 @@ const legalPages = {
             {
                 heading: "Contact",
                 paragraphs: [
-                    "Udit Aswal operates this service. Use the Portfolio, GitHub, or LinkedIn contact links below for privacy questions and rights requests. Use Report abuse for unsafe or unlawful links."
+                    "Please use the GitHub, or LinkedIn contact links below for privacy questions and rights requests. Use Report abuse for unsafe or unlawful links."
                 ]
             }
         ]
@@ -92,12 +86,7 @@ const legalPages = {
                 paragraphs: [
                     "You retain responsibility for URLs and other content you submit. You confirm that you have the right to submit them and that their use does not violate law, third-party rights, or the Acceptable Use Policy."
                 ]
-            },
-            {
-                heading: "Liability",
-                paragraphs: [
-                    "To the maximum extent permitted by law, the service is provided without warranties and the operator is not liable for indirect, incidental, special, consequential, or loss-of-data damages arising from use, interruption, third-party destinations, or misuse of shortened links. Nothing here excludes liability that cannot legally be excluded."
-                ]
+
             },
             {
                 heading: "Governing law",
@@ -109,7 +98,6 @@ const legalPages = {
     },
     "acceptable-use": {
         title: "Acceptable use",
-        summary: "Safety rules for accounts, destinations, and shortened links.",
         lastUpdated,
         sections: [
             {

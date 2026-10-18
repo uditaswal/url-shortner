@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import { isStrongPassword } from "../util/validation.util.js";
 
 process.env.APP_ENV = "test";
 process.env.TEST_DB_URL = process.env.TEST_DB_URL || "mongodb://127.0.0.1:27017/";
@@ -15,6 +16,7 @@ const { normalizeCreatePayload, redirectToShortURL, validateCreatePayload } = aw
 );
 const { default: UrlModel } = await import("../model/url.models.js");
 const { default: Visit } = await import("../model/visit.models.js");
+const { default: logger, logError, logHttpRequest } = await import("../util/logger.util.js");
 
 const future = new Date(Date.now() + 60 * 60 * 1000);
 const futureLocal = new Date(future.getTime() - future.getTimezoneOffset() * 60 * 1000)
@@ -37,10 +39,19 @@ assert.equal(validateCreatePayload(dateOnly), "Choose both an expiration date an
 const completeExpiration = normalizeCreatePayload({
     url: "https://example.com/complete-expiration",
     expiresOn: futureDate,
-    expiresAtTime: futureTime
+    expiresAtTime: futureTime,
+    expiresAt: future.toISOString()
 });
 assert.equal(validateCreatePayload(completeExpiration), null);
 assert.ok(completeExpiration.expiresAt.getTime() > Date.now());
+assert.equal(
+    validateCreatePayload(
+        normalizeCreatePayload({ url: "https://example.com/no-zone", expiresAt: futureLocal })
+    ),
+    "Expiration must include a time zone."
+);
+assert.equal(isStrongPassword("StrongPass1"), true);
+assert.equal(isStrongPassword(`StrongPass1${"a".repeat(80)}`), false);
 
 const originalUrlFindOne = UrlModel.findOne;
 const originalVisitCreate = Visit.create;
@@ -82,6 +93,33 @@ try {
 
 assert.equal(redirectLocation, "https://example.com/destination");
 
+const originalLoggerLog = logger.log;
+const capturedLogs = [];
+logger.log = (entry) => capturedLogs.push(entry);
+try {
+    logHttpRequest(
+        {
+            method: "GET",
+            path: "/sample1",
+            originalUrl: "/sample1?token=synthetic",
+            get: () => "synthetic",
+            user: { _id: "synthetic-user" }
+        },
+        { statusCode: 200, getHeader: () => "123" },
+        4,
+        { type: "json", body: { password: "synthetic" } }
+    );
+    logError(new Error("mongodb://review:synthetic@example.test/db"), {
+        details: { authorization: "synthetic", nested: { token: "synthetic" } }
+    });
+} finally {
+    logger.log = originalLoggerLog;
+}
+
+const serializedLogs = JSON.stringify(capturedLogs);
+assert.doesNotMatch(serializedLogs, /synthetic@example\.test|synthetic-user|token=synthetic/);
+assert.match(serializedLogs, /\[redacted\]/);
+
 const probeDirectory = mkdtempSync(path.join(tmpdir(), "url-shortener-logger-"));
 const loggerUrl = pathToFileURL(path.resolve("util/logger.util.js")).href;
 const loggerProbe = spawnSync(
@@ -113,5 +151,5 @@ try {
 }
 
 console.log(
-    "Reliability unit tests passed: expiry validation, analytics failure handling, and dual deployed logging."
+    "Reliability unit tests passed: expiry validation, safe logging, analytics failure handling, and dual deployed logging."
 );

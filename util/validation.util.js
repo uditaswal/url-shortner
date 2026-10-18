@@ -24,7 +24,10 @@ export function isValidUsername(username) {
 }
 
 export function isStrongPassword(password) {
-    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password);
+    return (
+        Buffer.byteLength(password, "utf8") <= 72 &&
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)
+    );
 }
 
 export function normalizeUrlInput(value) {
@@ -42,6 +45,10 @@ export function normalizeDateTimeInput(value) {
 export function parseExpirationInput(value) {
     const normalizedValue = normalizeDateTimeInput(value);
     if (!normalizedValue) {
+        return null;
+    }
+
+    if (!/(?:Z|[+-]\d{2}:\d{2})$/i.test(normalizedValue)) {
         return null;
     }
 

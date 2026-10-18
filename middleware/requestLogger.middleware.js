@@ -15,14 +15,12 @@ function normalizeResponseBody(body) {
     if (typeof body === "string") {
         return {
             type: "text",
-            size: body.length,
-            preview: body.slice(0, 500)
+            size: body.length
         };
     }
 
     return {
-        type: "json",
-        body
+        type: "json"
     };
 }
 
@@ -45,12 +43,9 @@ const requestLogger = (req, res, next) => {
     };
 
     res.render = (view, locals, callback) => {
-        const resolvedLocals = typeof locals === "function" || locals === undefined ? null : locals;
-
         responsePayload = {
             type: "view",
-            view,
-            locals: resolvedLocals ? Object.keys(resolvedLocals) : []
+            view: typeof view === "string" ? view : "unknown"
         };
 
         return originalRender(view, locals, callback);

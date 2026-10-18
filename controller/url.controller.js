@@ -8,6 +8,7 @@ import {
     recordVisit
 } from "../util/analytics.util.js";
 import { logError } from "../util/logger.util.js";
+import config from "../util/config.util.js";
 import {
     isSafePlainInput,
     isValidShortId,
@@ -23,7 +24,40 @@ function isJsonRequest(req) {
 }
 
 function buildShortUrl(req, shortId) {
-    return `${req.protocol}://${req.get("host")}/${shortId}`;
+    const baseUrl = config.publicBaseUrl || `${req.protocol}://${req.get("host")}`;
+    return `${baseUrl}/${shortId}`;
+}
+
+const RESERVED_SHORT_IDS = new Set([
+    "api",
+    "ui",
+    "login",
+    "signup",
+    "profile",
+    "privacy",
+    "terms",
+    "acceptable-use",
+    "report-abuse",
+    "legacy",
+    "user",
+    "health",
+    "images",
+    "css",
+    "js",
+    "favicon.ico"
+]);
+
+function isReservedShortId(value) {
+    return RESERVED_SHORT_IDS.has(value.toLowerCase());
+}
+
+function buildFormValues(payload) {
+    return {
+        ...payload,
+        expiresAt: payload.expiresAt?.toISOString() || "",
+        expiresOn: payload.expiresOnInput || "",
+        expiresAtTime: payload.expiresAtTimeInput || ""
+    };
 }
 
 const createAliasSuffix = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 4);
@@ -167,16 +201,10 @@ export function normalizeCreatePayload(body = {}) {
 
     const resolvedExpiresOnInput = expiresOnInput;
     const resolvedExpiresAtTimeInput = expiresAtTimeInput;
-    const expiresAtInput = hasSplitExpirationInput
-        ? [resolvedExpiresOnInput, resolvedExpiresAtTimeInput].filter(Boolean).join(" ")
-        : legacyExpiresAtInput;
-
-    let expiresAt = null;
-    if (hasSplitExpirationInput && resolvedExpiresOnInput && resolvedExpiresAtTimeInput) {
-        expiresAt = parseExpirationInput(`${resolvedExpiresOnInput}T${resolvedExpiresAtTimeInput}`);
-    } else if (!hasSplitExpirationInput) {
-        expiresAt = parseExpirationInput(legacyExpiresAtInput);
-    }
+    const expiresAtInput =
+        legacyExpiresAtInput ||
+        [resolvedExpiresOnInput, resolvedExpiresAtTimeInput].filter(Boolean).join(" ");
+    const expiresAt = legacyExpiresAtInput ? parseExpirationInput(legacyExpiresAtInput) : null;
 
     return {
         url: normalizeUrlInput(body.url || ""),
@@ -206,15 +234,22 @@ export function validateCreatePayload(payload) {
         return "Short ID must be 6 to 20 characters and can only use letters, numbers, hyphens, or underscores.";
     }
 
+    if (payload.customShortId && isReservedShortId(payload.customShortId)) {
+        return "That custom alias is reserved by the application. Choose another one.";
+    }
+
     if (payload.missingExpirationDate || payload.missingExpirationTime) {
         return "Choose both an expiration date and time.";
     }
 
-    if (
-        payload.expiresAtInput &&
-        (!payload.expiresAt || payload.expiresAt.getTime() <= Date.now())
-    ) {
-        return "Expiration must be a valid future date and time.";
+    if (payload.expiresAtInput) {
+        if (!payload.expiresAt) {
+            return "Expiration must include a time zone.";
+        }
+
+        if (payload.expiresAt.getTime() <= Date.now()) {
+            return "Expiration must be a valid future date and time.";
+        }
     }
 
     return null;
@@ -291,7 +326,7 @@ export async function generateShortId(req, res) {
                     res,
                     {
                         error: `This URL already exists with short ID "${urlEntry.shortId}".`,
-                        values: payload,
+                        values: buildFormValues(payload),
                         url: buildShortUrl(req, urlEntry.shortId)
                     },
                     409
@@ -324,7 +359,10 @@ export async function generateShortId(req, res) {
                 res,
                 {
                     error: conflict.error,
-                    values: { ...payload, customShortId: conflict.suggestedAlias }
+                    values: {
+                        ...buildFormValues(payload),
+                        customShortId: conflict.suggestedAlias
+                    }
                 },
                 409
             );
@@ -400,7 +438,10 @@ export async function generateShortId(req, res) {
                     res,
                     {
                         error: conflict.error,
-                        values: { ...payload, customShortId: conflict.suggestedAlias }
+                        values: {
+                            ...buildFormValues(payload),
+                            customShortId: conflict.suggestedAlias
+                        }
                     },
                     409
                 );
@@ -448,7 +489,7 @@ export async function updateShortUrl(req, res) {
             res,
             {
                 error: payloadError,
-                values: payload
+                values: buildFormValues(payload)
             },
             400
         );
@@ -487,7 +528,10 @@ export async function updateShortUrl(req, res) {
             res,
             {
                 error: conflict.error,
-                values: { ...payload, customShortId: conflict.suggestedAlias }
+                values: {
+                    ...buildFormValues(payload),
+                    customShortId: conflict.suggestedAlias
+                }
             },
             409
         );
