@@ -1,7 +1,9 @@
 import User from "../model/user.models.js";
 import { getUser } from "../util/auth.util.js";
+import type { NextFunction, Request, Response } from "express";
+import type { AuthenticatedUser } from "../types/express.js";
 
-function sendAuthRequired(req, res) {
+function sendAuthRequired(req: Request, res: Response) {
     if (req.responseMode === "json") {
         return res.status(401).json({
             error: "Authentication required."
@@ -13,7 +15,7 @@ function sendAuthRequired(req, res) {
     });
 }
 
-function sendAdminRequired(req, res) {
+function sendAdminRequired(req: Request, res: Response) {
     if (req.responseMode === "json") {
         return res.status(403).json({
             error: "Admin access required."
@@ -25,7 +27,9 @@ function sendAdminRequired(req, res) {
     });
 }
 
-async function resolveAuthenticatedUser(token) {
+async function resolveAuthenticatedUser(
+    token: string | undefined
+): Promise<AuthenticatedUser | null> {
     const payload = getUser(token);
     if (!payload?._id) {
         return null;
@@ -49,7 +53,7 @@ async function resolveAuthenticatedUser(token) {
     };
 }
 
-export async function restrictToLoginUserOnly(req, res, next) {
+export async function restrictToLoginUserOnly(req: Request, res: Response, next: NextFunction) {
     const userUid = req.cookies?.uid;
     if (!userUid) return sendAuthRequired(req, res);
 
@@ -60,7 +64,7 @@ export async function restrictToLoginUserOnly(req, res, next) {
     next();
 }
 
-export async function checkAuth(req, res, next) {
+export async function checkAuth(req: Request, res: Response, next: NextFunction) {
     const userUid = req.cookies?.uid;
 
     const user = await resolveAuthenticatedUser(userUid);
@@ -69,7 +73,7 @@ export async function checkAuth(req, res, next) {
     next();
 }
 
-export async function restrictToAdminOnly(req, res, next) {
+export async function restrictToAdminOnly(req: Request, res: Response, next: NextFunction) {
     const userUid = req.cookies?.uid;
     if (!userUid) return sendAuthRequired(req, res);
 

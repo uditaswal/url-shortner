@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import mongoose from "mongoose";
 import request from "supertest";
+import type { Express } from "express";
+import type { HydratedDocument } from "mongoose";
+import type { UserFields } from "../model/user.models.js";
 
 process.env.APP_ENV = "test";
 process.env.TEST_DB_NAME = process.env.TEST_DB_NAME || "url-shortner-integration";
@@ -29,9 +32,9 @@ const UPDATED_CUSTOM_SHORT_ID = `${CUSTOM_SHORT_ID}_v2`;
 const TEST_USERNAME = `tester_${Date.now()}`;
 const FIRST_USER_USERNAME = `owner_a_${Date.now().toString().slice(-10)}`;
 const SECOND_USER_USERNAME = `owner_b_${Date.now().toString().slice(-10)}`;
-const TEST_DB_NAME = process.env.TEST_DB_NAME;
+const TEST_DB_NAME = process.env.TEST_DB_NAME || "url-shortner-integration";
 
-function toDateTimeLocalValue(date) {
+function toDateTimeLocalValue(date: Date): string {
     const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60 * 1000);
     return localDate.toISOString().slice(0, 16);
 }
@@ -41,7 +44,7 @@ const EXPIRE_SOON = toDateTimeLocalValue(EXPIRE_SOON_DATE_OBJECT);
 const EXPIRE_SOON_INSTANT = EXPIRE_SOON_DATE_OBJECT.toISOString();
 const [EXPIRE_SOON_DATE, EXPIRE_SOON_TIME] = EXPIRE_SOON.split("T");
 
-function buildDatabaseUrl(baseUrl, dbName) {
+function buildDatabaseUrl(baseUrl: string | undefined, dbName: string): string {
     const trimmedBaseUrl = String(baseUrl || "").trim();
     if (!trimmedBaseUrl) {
         throw new Error("TEST_DB_URL is required for integration tests.");
@@ -61,7 +64,7 @@ async function resetDatabase() {
     ]);
 }
 
-async function waitFor(check, message, timeoutMs = 2000) {
+async function waitFor(check: () => boolean | Promise<boolean>, message: string, timeoutMs = 2000) {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
         if (await check()) return;
@@ -71,14 +74,24 @@ async function waitFor(check, message, timeoutMs = 2000) {
     throw new Error(message);
 }
 
-async function createOrdinaryUser(app, username, name) {
+async function createOrdinaryUser(
+    app: Express,
+    username: string,
+    name: string
+): Promise<{
+    user: HydratedDocument<UserFields>;
+    cookie: string;
+}> {
     const response = await request(app)
         .post("/api/auth/signup")
         .send({ name, username, password: "StrongPass1" })
         .expect(201);
 
+    const user = await User.findOne({ username });
+    assert.ok(user);
+
     return {
-        user: await User.findOne({ username }),
+        user,
         cookie: response.headers["set-cookie"][0].split(";")[0]
     };
 }
@@ -194,7 +207,9 @@ async function run() {
             .expect(201);
         assert.equal(customGuestLink.body.url.shortId, guestAlias);
         assert.ok(customGuestLink.body.url.expiresAt);
-        assert.equal((await UrlModel.findById(guestUrl._id)).expiresAt, null);
+        const guestUrlAfter = await UrlModel.findById(guestUrl._id);
+        assert.ok(guestUrlAfter);
+        assert.equal(guestUrlAfter.expiresAt, null);
 
         await request(app)
             .post("/ui/urls")
@@ -242,7 +257,9 @@ async function run() {
             .post("/api/auth/login")
             .send({ username: legacyUsername, password: "StrongPass1" })
             .expect(200);
-        assert.match((await User.findOne({ username: legacyUsername })).password, /^\$2[aby]\$\d{2}\$/);
+        const migratedLegacyUser = await User.findOne({ username: legacyUsername });
+        assert.ok(migratedLegacyUser);
+        assert.match(migratedLegacyUser.password, /^\$2[aby]\$\d{2}\$/);
 
         await request(app)
             .post("/user")
@@ -368,7 +385,7 @@ async function run() {
             .expect(200)
             .expect((response) => {
                 assert.deepEqual(
-                    response.body.urls.map((url) => url.shortId),
+                    response.body.urls.map((url: { shortId: string }) => url.shortId),
                     [firstOwnerAlias]
                 );
             });
@@ -379,12 +396,14 @@ async function run() {
             .expect(200)
             .expect((response) => {
                 assert.deepEqual(
-                    response.body.urls.map((url) => url.shortId),
+                    response.body.urls.map((url: { shortId: string }) => url.shortId),
                     [secondOwnerAlias]
                 );
             });
 
-        assert.ok(await UrlModel.exists({ shortId: firstOwnerAlias, createdBy: firstOwner.user._id }));
+        assert.ok(
+            await UrlModel.exists({ shortId: firstOwnerAlias, createdBy: firstOwner.user._id })
+        );
 
         await request(app)
             .post("/api/urls")
@@ -404,12 +423,14 @@ async function run() {
         const shortId = userUrl.shortId;
 
         const originalVisitCreate = Visit.create;
-        Visit.create = () => Promise.reject(new Error("Simulated analytics write failure"));
+        (Visit as unknown as { create: (...args: unknown[]) => unknown }).create = () =>
+            Promise.reject(new Error("Simulated analytics write failure"));
         try {
             await request(app).get(`/${shortId}`).expect(302).expect("Location", SAMPLE_URL);
             await new Promise((resolve) => setImmediate(resolve));
         } finally {
-            Visit.create = originalVisitCreate;
+            (Visit as unknown as { create: (...args: unknown[]) => unknown }).create =
+                originalVisitCreate;
         }
         assert.equal(await Visit.countDocuments({ urlId: userUrl._id }), 0);
 
@@ -482,6 +503,7 @@ async function run() {
         assert.equal(recordedVisits[1].isBot, false);
 
         const updatedUrl = await UrlModel.findOne({ _id: userUrl._id });
+        assert.ok(updatedUrl);
         assert.equal(updatedUrl.visitHistory.length, 0);
 
         await request(app)
@@ -547,10 +569,7 @@ async function run() {
         assert.equal(deletedCustomUrl, null);
 
         const simulatedNow = new Date(Date.now() + 2 * 60_000);
-        const concurrentStore = new MongoRateLimitStore(
-            "concurrency-test",
-            () => simulatedNow
-        );
+        const concurrentStore = new MongoRateLimitStore("concurrency-test", () => simulatedNow);
         concurrentStore.init({ windowMs: 60_000 });
         await RateLimitEntry.create({
             key: "concurrency-test:shared-client",
@@ -564,6 +583,7 @@ async function run() {
         const finalRateLimitEntry = await RateLimitEntry.findOne({
             key: "concurrency-test:shared-client"
         });
+        assert.ok(finalRateLimitEntry);
         assert.equal(finalRateLimitEntry.totalHits, 25);
         assert.deepEqual(
             concurrentResults.map((result) => result.totalHits).sort((a, b) => a - b),

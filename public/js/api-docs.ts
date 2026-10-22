@@ -1,7 +1,7 @@
 /* global document, window, MutationObserver */
 
 (() => {
-    const copyText = async (value) => {
+    const copyText = async (value: string): Promise<void> => {
         if (navigator.clipboard && window.isSecureContext) {
             await navigator.clipboard.writeText(value);
             return;

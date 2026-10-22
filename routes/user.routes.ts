@@ -1,4 +1,5 @@
 import express from "express";
+import type { RequestHandler } from "express";
 import {
     handleUserLogin,
     handleUserLogout,
@@ -6,15 +7,15 @@ import {
 } from "../controller/user.controller.js";
 import { authRateLimiter } from "../middleware/rateLimiter.middleware.js";
 
-function asJson(req, _res, next) {
+const asJson: RequestHandler = (req, _res, next) => {
     req.responseMode = "json";
     next();
-}
+};
 
-function asHtml(req, _res, next) {
+const asHtml: RequestHandler = (req, _res, next) => {
     req.responseMode = "html";
     next();
-}
+};
 
 /**
  * @swagger

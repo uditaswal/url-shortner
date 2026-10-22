@@ -15,6 +15,7 @@ import { installConsoleLogger, installProcessErrorHandlers } from "./util/logger
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const cspNonces = new WeakMap<object, string>();
 
 installConsoleLogger();
 installProcessErrorHandlers();
@@ -26,7 +27,9 @@ export function createApp() {
     app.set("views", path.join(__dirname, "views"));
 
     app.use((req, res, next) => {
-        res.locals.cspNonce = crypto.randomBytes(16).toString("base64");
+        const nonce = crypto.randomBytes(16).toString("base64");
+        cspNonces.set(req, nonce);
+        res.locals.cspNonce = nonce;
         next();
     });
 
@@ -35,7 +38,7 @@ export function createApp() {
             contentSecurityPolicy: {
                 directives: {
                     defaultSrc: ["'self'"],
-                    scriptSrc: ["'self'", (req, res) => `'nonce-${res.locals.cspNonce}'`],
+                    scriptSrc: ["'self'", (req) => `'nonce-${cspNonces.get(req) || ""}'`],
                     styleSrc: ["'self'", "'unsafe-inline'"],
                     imgSrc: ["'self'", "data:"],
                     objectSrc: ["'none'"],

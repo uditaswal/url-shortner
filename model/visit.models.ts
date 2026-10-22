@@ -1,6 +1,16 @@
 import mongoose from "mongoose";
 
-const visitSchema = new mongoose.Schema(
+export interface VisitFields {
+    urlId: mongoose.Types.ObjectId;
+    timestamp: Date;
+    country: string;
+    isBot: boolean;
+    userAgent?: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const visitSchema = new mongoose.Schema<VisitFields>(
     {
         urlId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -36,6 +46,6 @@ visitSchema.index(
     { expireAfterSeconds: 90 * 24 * 60 * 60, name: "visit_retention_ttl_idx" }
 );
 
-const Visit = mongoose.model("visit", visitSchema);
+const Visit = mongoose.model<VisitFields>("visit", visitSchema);
 
 export default Visit;

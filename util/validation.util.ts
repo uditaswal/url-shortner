@@ -1,4 +1,4 @@
-export function sanitizeTextInput(value) {
+export function sanitizeTextInput(value: unknown): string {
     if (typeof value !== "string") {
         return "";
     }
@@ -11,38 +11,38 @@ export function sanitizeTextInput(value) {
     );
 }
 
-export function isSafePlainInput(value) {
+export function isSafePlainInput(value: unknown): value is string {
     return typeof value === "string";
 }
 
-export function normalizeUsername(value) {
+export function normalizeUsername(value: unknown): string {
     return sanitizeTextInput(value).toLowerCase();
 }
 
-export function isValidUsername(username) {
+export function isValidUsername(username: string): boolean {
     return /^[a-z0-9_]{3,20}$/.test(username);
 }
 
-export function isStrongPassword(password) {
+export function isStrongPassword(password: string): boolean {
     return (
         Buffer.byteLength(password, "utf8") <= 72 &&
         /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(password)
     );
 }
 
-export function normalizeUrlInput(value) {
+export function normalizeUrlInput(value: unknown): string {
     return sanitizeTextInput(value);
 }
 
-export function normalizeShortIdInput(value) {
+export function normalizeShortIdInput(value: unknown): string {
     return sanitizeTextInput(value);
 }
 
-export function normalizeDateTimeInput(value) {
+export function normalizeDateTimeInput(value: unknown): string {
     return sanitizeTextInput(value);
 }
 
-export function parseExpirationInput(value) {
+export function parseExpirationInput(value: unknown): Date | null {
     const normalizedValue = normalizeDateTimeInput(value);
     if (!normalizedValue) {
         return null;
@@ -60,7 +60,7 @@ export function parseExpirationInput(value) {
     return parsedDate;
 }
 
-export function validateHttpUrl(value) {
+export function validateHttpUrl(value: string): boolean {
     try {
         const parsedUrl = new URL(value);
         return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:";
@@ -69,10 +69,10 @@ export function validateHttpUrl(value) {
     }
 }
 
-export function escapeForRegex(value) {
+export function escapeForRegex(value: string): string {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function isValidShortId(value) {
+export function isValidShortId(value: string): boolean {
     return /^[A-Za-z0-9_-]{6,20}$/.test(value);
 }

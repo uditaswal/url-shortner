@@ -3,7 +3,11 @@ import { createApp } from "./app.js";
 import config from "./util/config.util.js";
 import swaggerUi from "swagger-ui-express";
 import swaggerJsdoc from "swagger-jsdoc";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const sourceExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
 const app = createApp();
 const PORT = config.port;
 await connectDB(config.db.url, config.db.name, config.db.accountLabel);
@@ -24,7 +28,7 @@ const swaggerOptions = {
             }
         ]
     },
-    apis: ["./routes/*.js", "./index.js"]
+    apis: [path.join(__dirname, "routes", `*.${sourceExtension}`), fileURLToPath(import.meta.url)]
 };
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 

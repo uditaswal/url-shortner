@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { spawnSync } from "node:child_process";
+import type { Request, Response } from "express";
+import { Types } from "mongoose";
 import { isStrongPassword } from "../util/validation.util.js";
 
 process.env.APP_ENV = "test";
@@ -11,9 +13,8 @@ process.env.TEST_DB_URL = process.env.TEST_DB_URL || "mongodb://127.0.0.1:27017/
 process.env.TEST_DB_NAME = process.env.TEST_DB_NAME || "url-shortner-unit";
 process.env.TEST_JWT_SECRET_KEY = process.env.TEST_JWT_SECRET_KEY || "unit-test-secret";
 
-const { normalizeCreatePayload, redirectToShortURL, validateCreatePayload } = await import(
-    "../controller/url.controller.js"
-);
+const { normalizeCreatePayload, redirectToShortURL, validateCreatePayload } =
+    await import("../controller/url.controller.js");
 const { default: UrlModel } = await import("../model/url.models.js");
 const { default: Visit } = await import("../model/visit.models.js");
 const { default: logger, logError, logHttpRequest } = await import("../util/logger.util.js");
@@ -43,6 +44,7 @@ const completeExpiration = normalizeCreatePayload({
     expiresAt: future.toISOString()
 });
 assert.equal(validateCreatePayload(completeExpiration), null);
+assert.ok(completeExpiration.expiresAt);
 assert.ok(completeExpiration.expiresAt.getTime() > Date.now());
 assert.equal(
     validateCreatePayload(
@@ -55,35 +57,37 @@ assert.equal(isStrongPassword(`StrongPass1${"a".repeat(80)}`), false);
 
 const originalUrlFindOne = UrlModel.findOne;
 const originalVisitCreate = Visit.create;
-let redirectLocation = null;
-UrlModel.findOne = async () => ({
+const mutableUrlModel = UrlModel as unknown as { findOne: (...args: unknown[]) => unknown };
+const mutableVisitModel = Visit as unknown as { create: (...args: unknown[]) => unknown };
+let redirectLocation: string | null = null;
+mutableUrlModel.findOne = async () => ({
     _id: "507f1f77bcf86cd799439011",
     shortId: "sample1",
     redirectUrl: "https://example.com/destination",
     expiresAt: null,
     isDisabled: false
 });
-Visit.create = () => Promise.reject(new Error("Simulated analytics outage"));
+mutableVisitModel.create = () => Promise.reject(new Error("Simulated analytics outage"));
 
 try {
     await redirectToShortURL(
         {
             params: { shortId: "sample1" },
             headers: {},
-            get: (header) => (header === "user-agent" ? "unit-test-agent" : null)
-        },
+            get: (header: string) => (header === "user-agent" ? "unit-test-agent" : undefined)
+        } as unknown as Request,
         {
             status() {
                 return this;
             },
-            json(payload) {
+            json(payload: unknown) {
                 throw new Error(`Unexpected JSON response: ${JSON.stringify(payload)}`);
             },
-            redirect(location) {
+            redirect(location: string) {
                 redirectLocation = location;
                 return this;
             }
-        }
+        } as unknown as Response
     );
     await new Promise((resolve) => setImmediate(resolve));
 } finally {
@@ -94,8 +98,9 @@ try {
 assert.equal(redirectLocation, "https://example.com/destination");
 
 const originalLoggerLog = logger.log;
-const capturedLogs = [];
-logger.log = (entry) => capturedLogs.push(entry);
+const capturedLogs: unknown[] = [];
+const mutableLogger = logger as unknown as { log: (...args: unknown[]) => unknown };
+mutableLogger.log = (entry) => capturedLogs.push(entry);
 try {
     logHttpRequest(
         {
@@ -103,9 +108,15 @@ try {
             path: "/sample1",
             originalUrl: "/sample1?token=synthetic",
             get: () => "synthetic",
-            user: { _id: "synthetic-user" }
-        },
-        { statusCode: 200, getHeader: () => "123" },
+            user: {
+                _id: new Types.ObjectId(),
+                name: "Synthetic",
+                username: "synthetic",
+                isAdmin: false,
+                tokenVersion: 0
+            }
+        } as unknown as Request,
+        { statusCode: 200, getHeader: () => "123" } as unknown as Response,
         4,
         { type: "json", body: { password: "synthetic" } }
     );
@@ -121,7 +132,7 @@ assert.doesNotMatch(serializedLogs, /synthetic@example\.test|synthetic-user|toke
 assert.match(serializedLogs, /\[redacted\]/);
 
 const probeDirectory = mkdtempSync(path.join(tmpdir(), "url-shortener-logger-"));
-const loggerUrl = pathToFileURL(path.resolve("util/logger.util.js")).href;
+const loggerUrl = pathToFileURL(path.resolve("util/logger.util.ts")).href;
 const loggerProbe = spawnSync(
     process.execPath,
     [

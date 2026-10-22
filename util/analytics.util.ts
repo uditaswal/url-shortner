@@ -1,10 +1,22 @@
 import Visit from "../model/visit.models.js";
+import type { HydratedDocument, Types } from "mongoose";
+import type { LegacyVisit, UrlFields } from "../model/url.models.js";
+import type { VisitFields } from "../model/visit.models.js";
 
-function legacyVisits(entry) {
+type UrlDocument = HydratedDocument<UrlFields>;
+type UrlWithCounts = UrlFields & {
+    _id: Types.ObjectId;
+    visitCount: number;
+    botVisitCount: number;
+};
+
+export type DashboardUrl = UrlWithCounts & { statusLabel: "active" | "expired" | "disabled" };
+
+function legacyVisits(entry: Pick<UrlFields, "visitHistory"> | null | undefined): LegacyVisit[] {
     return Array.isArray(entry?.visitHistory) ? entry.visitHistory : [];
 }
 
-function legacyCounts(entry) {
+function legacyCounts(entry: Pick<UrlFields, "visitHistory"> | null | undefined) {
     const visits = legacyVisits(entry);
     const botVisits = visits.filter((visit) => visit.isBot).length;
 
@@ -14,7 +26,12 @@ function legacyCounts(entry) {
     };
 }
 
-function publicVisit(visit) {
+function publicVisit(visit: {
+    timestamp: Date | number;
+    country: string;
+    isBot: boolean;
+    userAgent?: string | null;
+}) {
     return {
         timestamp: new Date(visit.timestamp).getTime(),
         country: visit.country || "Unknown",
@@ -23,7 +40,12 @@ function publicVisit(visit) {
     };
 }
 
-export function recordVisit(urlId, visit) {
+export function recordVisit(
+    urlId: Types.ObjectId,
+    visit: Omit<VisitFields, "urlId" | "createdAt" | "updatedAt" | "timestamp"> & {
+        timestamp: number;
+    }
+) {
     return Visit.create({
         urlId,
         timestamp: new Date(visit.timestamp),
@@ -33,7 +55,7 @@ export function recordVisit(urlId, visit) {
     });
 }
 
-export async function attachVisitCounts(entries) {
+export async function attachVisitCounts(entries: UrlDocument[]): Promise<UrlWithCounts[]> {
     if (entries.length === 0) return [];
 
     const ids = entries.map((entry) => entry._id);
@@ -49,7 +71,7 @@ export async function attachVisitCounts(entries) {
     ]);
     const countsByUrl = new Map(storedCounts.map((item) => [String(item._id), item]));
 
-    return entries.map((entry) => {
+    return entries.map((entry): UrlWithCounts => {
         const plain = typeof entry.toObject === "function" ? entry.toObject() : entry;
         const legacy = legacyCounts(plain);
         const stored = countsByUrl.get(String(plain._id));
@@ -62,7 +84,7 @@ export async function attachVisitCounts(entries) {
     });
 }
 
-export async function getCountryStats(entries) {
+export async function getCountryStats(entries: UrlWithCounts[]) {
     if (entries.length === 0) return [];
 
     const ids = entries.map((entry) => entry._id);
@@ -70,9 +92,7 @@ export async function getCountryStats(entries) {
         { $match: { urlId: { $in: ids }, isBot: false } },
         { $group: { _id: "$country", clicks: { $sum: 1 } } }
     ]);
-    const totals = new Map(
-        storedCountries.map((item) => [item._id || "Unknown", item.clicks])
-    );
+    const totals = new Map(storedCountries.map((item) => [item._id || "Unknown", item.clicks]));
 
     entries.forEach((entry) => {
         legacyVisits(entry).forEach((visit) => {
@@ -87,16 +107,14 @@ export async function getCountryStats(entries) {
         .sort((a, b) => b.clicks - a.clicks);
 }
 
-export async function getUrlAnalytics(entry, historyLimit = 500) {
+export async function getUrlAnalytics(entry: UrlDocument, historyLimit = 500) {
     const [humanVisits, botVisits, recentVisits] = await Promise.all([
         Visit.countDocuments({ urlId: entry._id, isBot: false }),
         Visit.countDocuments({ urlId: entry._id, isBot: true }),
         Visit.find({ urlId: entry._id }).sort({ timestamp: -1 }).limit(historyLimit).lean()
     ]);
     const legacy = legacyCounts(entry);
-    const legacyHistory = legacyVisits(entry).map((visit) =>
-        typeof visit.toObject === "function" ? visit.toObject() : visit
-    );
+    const legacyHistory = legacyVisits(entry);
 
     return {
         humanVisits: humanVisits + legacy.humanVisits,
@@ -112,6 +130,6 @@ export async function getUrlAnalytics(entry, historyLimit = 500) {
     };
 }
 
-export function deleteVisitsForUrl(urlId) {
+export function deleteVisitsForUrl(urlId: Types.ObjectId) {
     return Visit.deleteMany({ urlId });
 }

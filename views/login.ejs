@@ -46,19 +46,6 @@
 
     <%- include("partials/footer") %>
 
-    <script nonce="<%= cspNonce %>">
-        document.querySelectorAll(".password-toggle").forEach((button) => {
-            button.addEventListener("click", () => {
-                const input = document.getElementById(button.dataset.passwordTarget);
-                if (!input) return;
-
-                const isPassword = input.type === "password";
-                input.type = isPassword ? "text" : "password";
-                button.textContent = isPassword ? "Hide" : "Show";
-                button.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
-            });
-        });
-    </script>
 </body>
 
 </html>

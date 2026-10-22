@@ -1,8 +1,9 @@
 import rateLimit from "express-rate-limit";
+import type { Request, Response } from "express";
 import MongoRateLimitStore from "../util/rateLimitStore.util.js";
 
-function buildRateLimitHandler(message) {
-    return (req, res) => {
+function buildRateLimitHandler(message: string) {
+    return (req: Request, res: Response) => {
         if (
             req.originalUrl.startsWith("/api") ||
             req.xhr ||
@@ -35,7 +36,7 @@ function buildRateLimitHandler(message) {
     };
 }
 
-function buildStore(prefix) {
+function buildStore(prefix: string) {
     return new MongoRateLimitStore(prefix);
 }
 

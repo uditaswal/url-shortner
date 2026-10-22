@@ -1,7 +1,10 @@
 import express from "express";
+import type { Request, Response } from "express";
 import mongoose from "mongoose";
+import type { UrlFields } from "../model/url.models.js";
 import URL from "../model/url.models.js";
 import { attachVisitCounts, getCountryStats } from "../util/analytics.util.js";
+import type { DashboardUrl } from "../util/analytics.util.js";
 import { getLegalPage } from "../util/legalPages.util.js";
 
 const apiStaticRouter = express.Router();
@@ -16,22 +19,31 @@ const LINK_LIST_LIMIT = 100;
  *     description: Read-only dashboard and profile data APIs for authenticated users.
  */
 
-function getDashboardState(query = {}) {
+function getDashboardState(
+    query: {
+        search?: unknown;
+        status?: unknown;
+        sortBy?: unknown;
+        order?: unknown;
+    } = {}
+) {
     const search = typeof query.search === "string" ? query.search.trim().toLowerCase() : "";
-    const status = ["all", "active", "inactive", "expired", "disabled"].includes(query.status)
-        ? query.status
+    const requestedStatus = typeof query.status === "string" ? query.status : "";
+    const requestedSortBy = typeof query.sortBy === "string" ? query.sortBy : "";
+    const statuses = ["all", "active", "inactive", "expired", "disabled"] as const;
+    const status = statuses.includes(requestedStatus as (typeof statuses)[number])
+        ? (requestedStatus as (typeof statuses)[number])
         : "all";
-    const sortBy = ["createdAt", "clicks", "shortId", "redirectUrl", "expiresAt"].includes(
-        query.sortBy
-    )
-        ? query.sortBy
+    const sortOptions = ["createdAt", "clicks", "shortId", "redirectUrl", "expiresAt"] as const;
+    const sortBy = sortOptions.includes(requestedSortBy as (typeof sortOptions)[number])
+        ? (requestedSortBy as (typeof sortOptions)[number])
         : "createdAt";
     const order = query.order === "asc" ? "asc" : "desc";
 
     return { search, status, sortBy, order };
 }
 
-function getUrlStatus(item) {
+function getUrlStatus(item: Pick<UrlFields, "isDisabled" | "expiresAt">) {
     if (item.isDisabled) {
         return "disabled";
     }
@@ -43,15 +55,17 @@ function getUrlStatus(item) {
     return "active";
 }
 
-function toDashboardItem(item) {
-    const plain = typeof item.toObject === "function" ? item.toObject() : item;
+function toDashboardItem(item: Omit<DashboardUrl, "statusLabel">): DashboardUrl {
+    const plain = item;
     return {
         ...plain,
         statusLabel: getUrlStatus(plain)
     };
 }
 
-function applyDashboardFilters(urls, filters) {
+type DashboardFilters = ReturnType<typeof getDashboardState>;
+
+function applyDashboardFilters(urls: DashboardUrl[], filters: DashboardFilters) {
     let items = [...urls];
 
     if (filters.search) {
@@ -63,11 +77,7 @@ function applyDashboardFilters(urls, filters) {
     }
 
     if (filters.status === "inactive") {
-        items = items.filter(
-            (item) =>
-                item.statusLabel === "active" &&
-                item.visitCount === 0
-        );
+        items = items.filter((item) => item.statusLabel === "active" && item.visitCount === 0);
     } else if (filters.status !== "all") {
         items = items.filter((item) => item.statusLabel === filters.status);
     }
@@ -80,8 +90,10 @@ function applyDashboardFilters(urls, filters) {
             left = a.visitCount || 0;
             right = b.visitCount || 0;
         } else if (filters.sortBy === "createdAt" || filters.sortBy === "expiresAt") {
-            left = a[filters.sortBy] ? new Date(a[filters.sortBy]).getTime() : 0;
-            right = b[filters.sortBy] ? new Date(b[filters.sortBy]).getTime() : 0;
+            const leftDate = a[filters.sortBy];
+            const rightDate = b[filters.sortBy];
+            left = leftDate ? new Date(leftDate).getTime() : 0;
+            right = rightDate ? new Date(rightDate).getTime() : 0;
         } else {
             left = String(a[filters.sortBy] || "").toLowerCase();
             right = String(b[filters.sortBy] || "").toLowerCase();
@@ -95,7 +107,7 @@ function applyDashboardFilters(urls, filters) {
     return items;
 }
 
-async function getDashboardPayload(req) {
+async function getDashboardPayload(req: Request) {
     const filters = getDashboardState(req.query);
     const allUsers = req.user
         ? (
@@ -114,38 +126,40 @@ async function getDashboardPayload(req) {
     };
 }
 
-async function renderDashboard(req, res) {
+async function renderDashboard(req: Request, res: Response) {
     return res.status(200).render("home", await getDashboardPayload(req));
 }
 
-async function getProfilePayload(req) {
+async function getProfilePayload(req: Request) {
+    if (!req.user) throw new Error("Profile data requires an authenticated user.");
     const userUrls = (
         await attachVisitCounts(
-            await URL.find({ createdBy: req.user._id }).sort({ createdAt: -1 }).limit(LINK_LIST_LIMIT)
+            await URL.find({ createdBy: req.user._id })
+                .sort({ createdAt: -1 })
+                .limit(LINK_LIST_LIMIT)
         )
     ).map(toDashboardItem);
     const totalUrls = userUrls.length;
     const totalClicks = userUrls.reduce((sum, item) => sum + (item.visitCount || 0), 0);
-    const botFilteredClicks = userUrls.reduce(
-        (sum, item) => sum + (item.botVisitCount || 0),
-        0
-    );
+    const botFilteredClicks = userUrls.reduce((sum, item) => sum + (item.botVisitCount || 0), 0);
     const activeUrls = userUrls.filter((item) => item.statusLabel === "active").length;
     const countryStats = await getCountryStats(userUrls);
 
     const flaggedUrls = req.user.isAdmin
         ? (
-              await URL.find({
-                  $or: [
-                      { isDisabled: true },
-                      {
-                          expiresAt: mongoose.trusted({
-                              $ne: null,
-                              $lte: new Date()
-                          })
-                      }
-                  ]
-              }).sort({ updatedAt: -1 })
+              await attachVisitCounts(
+                  await URL.find({
+                      $or: [
+                          { isDisabled: true },
+                          {
+                              expiresAt: mongoose.trusted({
+                                  $ne: null,
+                                  $lte: new Date()
+                              })
+                          }
+                      ]
+                  }).sort({ updatedAt: -1 })
+              )
           ).map(toDashboardItem)
         : [];
 
@@ -194,7 +208,7 @@ async function getProfilePayload(req) {
  *       200:
  *         description: Dashboard payload.
  */
-apiStaticRouter.get("/dashboard", async (req, res) => {
+apiStaticRouter.get("/dashboard", async (req: Request, res: Response) => {
     return res.status(200).json(await getDashboardPayload(req));
 });
 
@@ -214,7 +228,7 @@ uiStaticRouter.get("/", renderDashboard);
  *       302:
  *         description: Redirects to login when unauthenticated.
  */
-uiStaticRouter.get("/profile", async (req, res) => {
+uiStaticRouter.get("/profile", async (req: Request, res: Response) => {
     if (!req.user) return res.redirect("/ui/login");
 
     const profilePayload = await getProfilePayload(req);
@@ -251,7 +265,7 @@ legacyStaticRouter.get("/", renderDashboard);
 legacyStaticRouter.get("/ui", renderDashboard);
 legacyStaticRouter.get("/legacy", renderDashboard);
 
-legacyStaticRouter.get("/profile", async (req, res) => {
+legacyStaticRouter.get("/profile", async (req: Request, res: Response) => {
     if (!req.user) return res.redirect("/login");
 
     const profilePayload = await getProfilePayload(req);

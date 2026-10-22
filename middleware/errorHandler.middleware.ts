@@ -1,14 +1,15 @@
 import { logError } from "../util/logger.util.js";
+import type { ErrorRequestHandler, Request } from "express";
 
-function isApiRequest(req) {
-    return (
+function isApiRequest(req: Request): boolean {
+    return Boolean(
         req.originalUrl.startsWith("/api") ||
         req.xhr ||
         req.get("accept")?.includes("application/json")
     );
 }
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
     if (res.headersSent) {
         return next(err);
     }

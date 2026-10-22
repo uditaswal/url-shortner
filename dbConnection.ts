@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
 import logger, { logError } from "./util/logger.util.js";
 
-function getConnectionTarget(dbURL, dbName) {
+interface ConnectionTarget {
+    protocol: string;
+    host: string;
+    database: string;
+}
+
+function getConnectionTarget(dbURL: string, dbName: string): ConnectionTarget {
     try {
         const parsedUrl = new globalThis.URL(dbURL);
         return {
@@ -19,10 +25,10 @@ function getConnectionTarget(dbURL, dbName) {
 }
 
 export default async function connectDB(
-    dbURL,
-    dbName,
+    dbURL: string,
+    dbName: string,
     accountLabel = "default",
-    { syncIndexes = false } = {}
+    { syncIndexes = false }: { syncIndexes?: boolean } = {}
 ) {
     if (typeof dbURL !== "string" || !dbURL.trim()) {
         throw new Error("MongoDB connection URL is required.");
@@ -44,7 +50,11 @@ export default async function connectDB(
                 process.env.APP_ENV !== "production" &&
                 process.env.NODE_ENV !== "production"
         });
-        await mongoose.connection.db.admin().command({ ping: 1 });
+        const database = mongoose.connection.db;
+        if (!database) {
+            throw new Error("MongoDB connection is open but no database is selected.");
+        }
+        await database.admin().command({ ping: 1 });
 
         if (syncIndexes) {
             await Promise.all(Object.values(mongoose.models).map((model) => model.syncIndexes()));

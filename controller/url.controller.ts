@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
+import type { Request, Response } from "express";
+import type { HydratedDocument } from "mongoose";
 import URL from "../model/url.models.js";
+import type { UrlFields } from "../model/url.models.js";
 import { customAlphabet, nanoid } from "nanoid";
 import {
     attachVisitCounts,
@@ -19,11 +22,29 @@ import {
     validateHttpUrl
 } from "../util/validation.util.js";
 
-function isJsonRequest(req) {
+interface NormalizedCreatePayload {
+    url: string;
+    customShortId: string;
+    expiresAtInput: string;
+    expiresOnInput: string;
+    expiresAtTimeInput: string;
+    rawExpiresOnInput: string;
+    rawExpiresAtTimeInput: string;
+    hasSplitExpirationInput: boolean;
+    expiresAt: Date | null;
+    missingExpirationDate: boolean;
+    missingExpirationTime: boolean;
+}
+
+function isDuplicateKeyError(error: unknown): error is { code: number } {
+    return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
+
+function isJsonRequest(req: Request) {
     return req.responseMode === "json";
 }
 
-function buildShortUrl(req, shortId) {
+function buildShortUrl(req: Request, shortId: string) {
     const baseUrl = config.publicBaseUrl || `${req.protocol}://${req.get("host")}`;
     return `${baseUrl}/${shortId}`;
 }
@@ -47,11 +68,11 @@ const RESERVED_SHORT_IDS = new Set([
     "favicon.ico"
 ]);
 
-function isReservedShortId(value) {
+function isReservedShortId(value: string) {
     return RESERVED_SHORT_IDS.has(value.toLowerCase());
 }
 
-function buildFormValues(payload) {
+function buildFormValues(payload: NormalizedCreatePayload) {
     return {
         ...payload,
         expiresAt: payload.expiresAt?.toISOString() || "",
@@ -62,7 +83,7 @@ function buildFormValues(payload) {
 
 const createAliasSuffix = customAlphabet("abcdefghjkmnpqrstuvwxyz23456789", 4);
 
-async function suggestAvailableAlias(requestedAlias) {
+async function suggestAvailableAlias(requestedAlias: string): Promise<string> {
     const base = normalizeShortIdInput(requestedAlias).slice(0, 15) || "short-link";
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -75,7 +96,7 @@ async function suggestAvailableAlias(requestedAlias) {
     return nanoid(8);
 }
 
-async function buildAliasConflict(req, requestedAlias) {
+async function buildAliasConflict(req: Request, requestedAlias: string) {
     const suggestedAlias = await suggestAvailableAlias(requestedAlias);
 
     return {
@@ -85,7 +106,10 @@ async function buildAliasConflict(req, requestedAlias) {
     };
 }
 
-function buildUrlResponse(req, entry) {
+function buildUrlResponse(
+    req: Request,
+    entry: HydratedDocument<UrlFields> & { visitCount?: number }
+) {
     return {
         shortId: entry.shortId,
         redirectUrl: entry.redirectUrl,
@@ -98,12 +122,11 @@ function buildUrlResponse(req, entry) {
         updatedAt: entry.updatedAt,
         lastEditedAt: entry.lastEditedAt,
         visitCount:
-            entry.visitCount ??
-            (entry.visitHistory || []).filter((visit) => !visit.isBot).length
+            entry.visitCount ?? (entry.visitHistory || []).filter((visit) => !visit.isBot).length
     };
 }
 
-function getVisitorCountry(req) {
+function getVisitorCountry(req: Request): string {
     const country =
         req.get("cf-ipcountry") ||
         req.get("x-vercel-ip-country") ||
@@ -117,18 +140,18 @@ function getVisitorCountry(req) {
     return String(country).toUpperCase();
 }
 
-function isBotRequest(req) {
+function isBotRequest(req: Request): boolean {
     const userAgent = req.get("user-agent") || "";
     return /(bot|crawl|spider|slurp|preview|facebookexternalhit|whatsapp|discord|telegram|linkedinbot)/i.test(
         userAgent
     );
 }
 
-function isExpired(entry) {
+function isExpired(entry: Pick<UrlFields, "expiresAt"> | null | undefined): boolean {
     return Boolean(entry?.expiresAt && new Date(entry.expiresAt).getTime() <= Date.now());
 }
 
-function getUrlStatus(entry) {
+function getUrlStatus(entry: Pick<UrlFields, "isDisabled" | "expiresAt"> | null | undefined) {
     if (entry?.isDisabled) {
         return "disabled";
     }
@@ -140,11 +163,13 @@ function getUrlStatus(entry) {
     return "active";
 }
 
-function getOwnerId(req) {
+function getOwnerId(req: Request) {
     return req.user?._id || null;
 }
 
-function buildEditableValues(entry) {
+function buildEditableValues(
+    entry: Pick<UrlFields, "redirectUrl" | "shortId" | "expiresAt"> | null
+) {
     const expirationDate = entry?.expiresAt ? new Date(entry.expiresAt) : null;
 
     return {
@@ -156,11 +181,11 @@ function buildEditableValues(entry) {
     };
 }
 
-function buildOwnerFilter(shortId, req) {
+function buildOwnerFilter(shortId: string, req: Request) {
     return req.user?.isAdmin ? { shortId } : { shortId, createdBy: req.user?._id };
 }
 
-async function loadDashboardUrls(req) {
+async function loadDashboardUrls(req: Request) {
     if (!req.user) {
         return [];
     }
@@ -174,7 +199,17 @@ async function loadDashboardUrls(req) {
     }));
 }
 
-async function renderHomeWithState(req, res, extras = {}, statusCode = 200) {
+async function renderHomeWithState(
+    req: Request,
+    res: Response,
+    extras: {
+        values?: Record<string, unknown>;
+        error?: string | null;
+        url?: string | null;
+        successMessage?: string | null;
+    } = {},
+    statusCode = 200
+) {
     const userUrls = await loadDashboardUrls(req);
 
     return res.status(statusCode).render("home", {
@@ -193,7 +228,9 @@ async function renderHomeWithState(req, res, extras = {}, statusCode = 200) {
     });
 }
 
-export function normalizeCreatePayload(body = {}) {
+export function normalizeCreatePayload(
+    body: Record<string, unknown> = {}
+): NormalizedCreatePayload {
     const expiresOnInput = normalizeDateTimeInput(body.expiresOn || "");
     const expiresAtTimeInput = normalizeDateTimeInput(body.expiresAtTime || "");
     const legacyExpiresAtInput = normalizeDateTimeInput(body.expiresAt || "");
@@ -221,7 +258,7 @@ export function normalizeCreatePayload(body = {}) {
     };
 }
 
-export function validateCreatePayload(payload) {
+export function validateCreatePayload(payload: NormalizedCreatePayload): string | null {
     if (!payload.url) {
         return "URL is required.";
     }
@@ -255,7 +292,7 @@ export function validateCreatePayload(payload) {
     return null;
 }
 
-export async function generateShortId(req, res) {
+export async function generateShortId(req: Request, res: Response) {
     try {
         if (
             !isSafePlainInput(req.body.url) ||
@@ -372,7 +409,7 @@ export async function generateShortId(req, res) {
             shortId,
             redirectUrl: payload.url,
             expiresAt: payload.expiresAt,
-            createdBy: ownerId
+            createdBy: ownerId ?? undefined
         });
 
         if (isJsonRequest(req)) {
@@ -391,8 +428,8 @@ export async function generateShortId(req, res) {
             url: buildShortUrl(req, urlEntry.shortId),
             values: buildEditableValues(urlEntry)
         });
-    } catch (err) {
-        if (err?.code === 11000) {
+    } catch (err: unknown) {
+        if (isDuplicateKeyError(err)) {
             const payload = normalizeCreatePayload(req.body);
             const ownerId = getOwnerId(req);
             const existingUrl = ownerId
@@ -452,7 +489,7 @@ export async function generateShortId(req, res) {
     }
 }
 
-export async function updateShortUrl(req, res) {
+export async function updateShortUrl(req: Request, res: Response) {
     const currentShortId = normalizeShortIdInput(req.params.shortId);
     if (!isValidShortId(currentShortId)) {
         if (isJsonRequest(req)) {
@@ -557,7 +594,7 @@ export async function updateShortUrl(req, res) {
     });
 }
 
-export async function deleteShortUrl(req, res) {
+export async function deleteShortUrl(req: Request, res: Response) {
     const shortId = normalizeShortIdInput(req.params.shortId);
     if (!isValidShortId(shortId)) {
         if (isJsonRequest(req)) {
@@ -607,7 +644,7 @@ export async function deleteShortUrl(req, res) {
     });
 }
 
-export async function moderateShortUrl(req, res) {
+export async function moderateShortUrl(req: Request, res: Response) {
     const shortId = normalizeShortIdInput(req.params.shortId);
     const action = normalizeShortIdInput(req.body.action || "");
     const disabledReason = normalizeUrlInput(req.body.disabledReason || "");
@@ -655,7 +692,7 @@ export async function moderateShortUrl(req, res) {
     return res.redirect("/profile");
 }
 
-export async function redirectToShortURL(req, res) {
+export async function redirectToShortURL(req: Request, res: Response) {
     const shortId = normalizeUrlInput(req.params.shortId);
     if (!isValidShortId(shortId)) {
         return res.status(400).json({
@@ -698,12 +735,16 @@ export async function redirectToShortURL(req, res) {
     return res.redirect(entry.redirectUrl);
 }
 
-export async function getShortURLAnalytics(req, res) {
+export async function getShortURLAnalytics(req: Request, res: Response) {
     const shortId = normalizeUrlInput(req.params.shortId);
     if (!isValidShortId(shortId)) {
         return res.status(400).json({
             error: "Invalid short URL."
         });
+    }
+
+    if (!req.user) {
+        return res.status(401).json({ error: "Authentication required." });
     }
 
     const entry = await URL.findOne({ shortId, createdBy: req.user._id });

@@ -4,12 +4,11 @@ import path from "path";
 import util from "util";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
+import type { Request, Response } from "express";
 
 const isVercel = process.env.VERCEL === "1";
 const useStdout =
-    isVercel ||
-    process.env.APP_ENV === "production" ||
-    process.env.NODE_ENV === "production";
+    isVercel || process.env.APP_ENV === "production" || process.env.NODE_ENV === "production";
 const logsDir = process.env.LOG_DIR
     ? path.resolve(process.env.LOG_DIR)
     : isVercel
@@ -18,7 +17,7 @@ const logsDir = process.env.LOG_DIR
 
 function buildTransports() {
     fs.mkdirSync(logsDir, { recursive: true });
-    const transports = [
+    const transports: winston.transport[] = [
         new DailyRotateFile({
             dirname: logsDir,
             filename: "app-%DATE%.log",
@@ -58,13 +57,13 @@ const SENSITIVE_KEY = /password|secret|token|authorization|cookie|api[-_]?key|cr
 const CONNECTION_CREDENTIAL = /([a-z][a-z\d+.-]*:\/\/)[^\s@/:]+:[^\s@]+@/gi;
 const INLINE_SECRET = /\b(password|secret|token|api[-_]?key|authorization)\s*[:=]\s*[^\s,;)}\]]+/gi;
 
-function redactString(value) {
+function redactString(value: string): string {
     return String(value)
         .replace(CONNECTION_CREDENTIAL, "$1[redacted]@")
         .replace(INLINE_SECRET, "$1=[redacted]");
 }
 
-function serializeValue(value) {
+function serializeValue(value: unknown): unknown {
     if (value instanceof Error) {
         return {
             name: value.name,
@@ -101,13 +100,19 @@ function serializeValue(value) {
     return value;
 }
 
-function buildMessage(args) {
+function buildMessage(args: unknown[]): string {
     return util.format(...args);
 }
 
-export function logHttpRequest(req, res, durationMs, response = null) {
+export function logHttpRequest(
+    req: Request,
+    res: Response,
+    durationMs: number,
+    response: unknown = null
+) {
     logger.log({
         level: "info",
+        message: "HTTP request",
         event: "http_request",
         source: "express",
         http: {
@@ -121,7 +126,7 @@ export function logHttpRequest(req, res, durationMs, response = null) {
     });
 }
 
-export function logError(error, context = {}) {
+export function logError(error: unknown, context: { source?: string; details?: unknown } = {}) {
     const normalizedError =
         error instanceof Error
             ? {
@@ -136,6 +141,7 @@ export function logError(error, context = {}) {
 
     logger.log({
         level: "error",
+        message: normalizedError.message,
         event: "application_error",
         source: context.source || "application",
         error: normalizedError,
@@ -156,24 +162,27 @@ export function installConsoleLogger() {
         debug: console.debug.bind(console)
     };
 
-    Object.entries(CONSOLE_LEVEL_MAP).forEach(([method, level]) => {
-        console[method] = (...args) => {
-            logger.log({
-                level,
-                event: "console",
-                source: "node-console",
-                console: {
-                    method,
+    (Object.entries(CONSOLE_LEVEL_MAP) as [keyof typeof CONSOLE_LEVEL_MAP, string][]).forEach(
+        ([method, level]) => {
+            console[method] = (...args: unknown[]) => {
+                logger.log({
+                    level,
                     message: buildMessage(args),
-                    args: args.map(serializeValue)
-                }
-            });
+                    event: "console",
+                    source: "node-console",
+                    console: {
+                        method,
+                        message: buildMessage(args),
+                        args: args.map(serializeValue)
+                    }
+                });
 
-            if (!useStdout) {
-                originalConsole[method](...args);
-            }
-        };
-    });
+                if (!useStdout) {
+                    originalConsole[method](...args);
+                }
+            };
+        }
+    );
 
     Object.defineProperty(console, "__loggerPatched", {
         value: true,
@@ -188,7 +197,7 @@ export function installProcessErrorHandlers() {
         return;
     }
 
-    const handleFatalError = (error, type) => {
+    const handleFatalError = (error: unknown, type: string) => {
         logError(error, {
             source: "process",
             details: {

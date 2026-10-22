@@ -1,4 +1,7 @@
+import type { Request, Response } from "express";
+import type { HydratedDocument } from "mongoose";
 import User from "../model/user.models.js";
+import type { UserFields } from "../model/user.models.js";
 import { getAuthCookieOptions, removeUser, setUser } from "../util/auth.util.js";
 import {
     isSafePlainInput,
@@ -11,11 +14,11 @@ import {
 const bcryptHashRegex = /^\$2[aby]\$\d{2}\$/;
 const authCookieOptions = getAuthCookieOptions();
 
-function isJsonRequest(req) {
+function isJsonRequest(req: Request) {
     return req.responseMode === "json";
 }
 
-function authSuccessPayload(user) {
+function authSuccessPayload(user: HydratedDocument<UserFields>) {
     return {
         user: {
             id: user._id,
@@ -26,21 +29,31 @@ function authSuccessPayload(user) {
     };
 }
 
-function renderSignup(res, values = {}, error = null, statusCode = 400) {
+function renderSignup(
+    res: Response,
+    values: Record<string, string> = {},
+    error: string | null = null,
+    statusCode = 400
+) {
     return res.status(statusCode).render("signup", {
         error,
         values
     });
 }
 
-function renderLogin(res, values = {}, error = null, statusCode = 400) {
+function renderLogin(
+    res: Response,
+    values: Record<string, string> = {},
+    error: string | null = null,
+    statusCode = 400
+) {
     return res.status(statusCode).render("login", {
         error,
         values
     });
 }
 
-export async function handleUserSignup(req, res) {
+export async function handleUserSignup(req: Request, res: Response) {
     if (
         !isSafePlainInput(req.body.name) ||
         !isSafePlainInput(req.body.username) ||
@@ -121,7 +134,7 @@ export async function handleUserSignup(req, res) {
     return res.redirect("/");
 }
 
-export async function handleUserLogin(req, res) {
+export async function handleUserLogin(req: Request, res: Response) {
     if (!isSafePlainInput(req.body.username) || !isSafePlainInput(req.body.password)) {
         if (isJsonRequest(req)) {
             return res.status(400).json({ error: "Invalid input format." });
@@ -196,7 +209,7 @@ export async function handleUserLogin(req, res) {
     return res.redirect("/");
 }
 
-export async function handleUserLogout(req, res) {
+export async function handleUserLogout(req: Request, res: Response) {
     const token = req.cookies?.uid;
     const payload = removeUser(token);
 

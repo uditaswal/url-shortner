@@ -13,7 +13,8 @@ try {
         `MongoDB connection check passed for ${connection.name} on ${connection.host} in ${Date.now() - startedAt} ms.\n`
     );
 } catch (error) {
-    process.stderr.write(`MongoDB connection check failed: ${error.message}\n`);
+    const message = error instanceof Error ? error.message : "Unknown connection error";
+    process.stderr.write(`MongoDB connection check failed: ${message}\n`);
     process.exitCode = 1;
 } finally {
     await mongoose.disconnect();

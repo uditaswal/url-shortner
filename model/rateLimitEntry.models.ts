@@ -1,6 +1,14 @@
 import mongoose from "mongoose";
 
-const rateLimitEntrySchema = new mongoose.Schema(
+export interface RateLimitEntryFields {
+    key: string;
+    totalHits: number;
+    resetTime: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const rateLimitEntrySchema = new mongoose.Schema<RateLimitEntryFields>(
     {
         key: {
             type: String,
@@ -25,6 +33,9 @@ rateLimitEntrySchema.index(
     { expireAfterSeconds: 0, name: "rate_limit_reset_ttl_idx" }
 );
 
-const RateLimitEntry = mongoose.model("rate_limit_entry", rateLimitEntrySchema);
+const RateLimitEntry = mongoose.model<RateLimitEntryFields>(
+    "rate_limit_entry",
+    rateLimitEntrySchema
+);
 
 export default RateLimitEntry;

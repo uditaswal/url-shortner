@@ -1,7 +1,23 @@
 import bcrypt from "bcrypt";
 import mongoose from "mongoose";
 
-const userSchema = new mongoose.Schema(
+interface UserMethods {
+    comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+export interface UserFields {
+    name: string;
+    username: string;
+    password: string;
+    isAdmin: boolean;
+    tokenVersion: number;
+}
+
+const userSchema = new mongoose.Schema<
+    UserFields,
+    mongoose.Model<UserFields, Record<string, never>, UserMethods>,
+    UserMethods
+>(
     {
         name: {
             type: String,
@@ -40,6 +56,9 @@ userSchema.methods.comparePassword = function comparePassword(candidatePassword)
     return bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model("user", userSchema);
+const User = mongoose.model<
+    UserFields,
+    mongoose.Model<UserFields, Record<string, never>, UserMethods>
+>("user", userSchema);
 
 export default User;

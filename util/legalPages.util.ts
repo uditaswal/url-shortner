@@ -86,7 +86,6 @@ const legalPages = {
                 paragraphs: [
                     "You retain responsibility for URLs and other content you submit. You confirm that you have the right to submit them and that their use does not violate law, third-party rights, or the Acceptable Use Policy."
                 ]
-
             },
             {
                 heading: "Governing law",
@@ -157,7 +156,9 @@ const legalPages = {
     }
 };
 
-export function getLegalPage(page) {
-    return legalPages[page] || null;
-}
+export type LegalPageKey = keyof typeof legalPages;
 
+export function getLegalPage(page: string): (typeof legalPages)[LegalPageKey] | null {
+    if (!Object.hasOwn(legalPages, page)) return null;
+    return legalPages[page as LegalPageKey];
+}

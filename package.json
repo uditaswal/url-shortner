@@ -1,26 +1,36 @@
 {
-    "name": "02_urlshortnerv2",
+    "name": "url-shortener",
     "version": "1.0.0",
-    "description": "",
+    "description": "A TypeScript URL shortener with account-based link management, expiration, and click analytics.",
     "packageManager": "pnpm@10.34.7",
     "engines": {
         "node": ">=24 <25"
     },
-    "main": "index.js",
+    "main": "dist/index.js",
     "scripts": {
-        "test": "node test/reliability.unit.test.js && node test/app.integration.test.js",
-        "test:unit": "node test/reliability.unit.test.js",
-        "test:integration": "node test/app.integration.test.js",
-        "db:check": "node scripts/check-db-connection.js",
-        "db:sync-indexes": "node scripts/sync-indexes.js",
-        "start": "node index.js",
-        "dev": "nodemon index.js",
+        "test": "tsx test/reliability.unit.test.ts && tsx test/app.integration.test.ts",
+        "test:unit": "tsx test/reliability.unit.test.ts",
+        "test:integration": "tsx test/app.integration.test.ts",
+        "db:check": "tsx scripts/check-db-connection.ts",
+        "db:sync-indexes": "tsx scripts/sync-indexes.ts",
+        "build": "tsc -p tsconfig.json && node dist/scripts/copyRuntimeAssets.js",
+        "prestart": "pnpm build",
+        "start": "node dist/index.js",
+        "dev": "tsx watch index.ts",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
         "format": "prettier . --write"
     },
-    "keywords": [],
-    "author": "",
+    "keywords": [
+        "url-shortener",
+        "typescript",
+        "express",
+        "mongodb",
+        "ejs",
+        "analytics"
+    ],
+    "author": "Udit Aswal",
     "license": "ISC",
     "type": "module",
     "dependencies": {
@@ -34,7 +44,6 @@
         "jsonwebtoken": "^9.0.3",
         "mongoose": "^9.3.3",
         "nanoid": "^5.1.7",
-        "nodemon": "^3.1.14",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.1",
         "winston": "^3.19.0",
@@ -42,11 +51,24 @@
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@types/bcrypt": "^6.0.0",
+        "@types/cookie-parser": "^1.4.10",
+        "@types/ejs": "^3.1.5",
+        "@types/express": "^5.0.6",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^26.6.5",
+        "@types/supertest": "^7.2.1",
+        "@types/swagger-jsdoc": "^6.0.4",
+        "@types/swagger-ui-express": "^4.1.8",
         "eslint": "^10.3.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-prettier": "^5.5.5",
         "globals": "^17.6.0",
+        "jiti": "^2.7.0",
         "prettier": "^3.8.3",
-        "supertest": "^7.2.2"
+        "supertest": "^7.2.2",
+        "tsx": "^4.23.15",
+        "typescript": "^6.0.3",
+        "typescript-eslint": "^8.72.0"
     }
 }

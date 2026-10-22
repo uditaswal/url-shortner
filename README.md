@@ -1,6 +1,6 @@
 # URL Shortener
 
-A full-stack URL shortener built with Node.js, Express, MongoDB, and server-rendered EJS. It supports guest links, account-based link management, expiration, click analytics, admin moderation, and a documented JSON API.
+A full-stack URL shortener built with TypeScript, Node.js, Express, MongoDB, and server-rendered EJS. It supports guest links, account-based link management, expiration, click analytics, admin moderation, and a documented JSON API.
 
 [Live demo](https://url-shortner-ugkr.onrender.com/) · [Source code](https://github.com/uditaswal/url-shortner) · [Run locally](#run-locally) · [API documentation](#api-documentation)
 
@@ -20,7 +20,7 @@ Visitors can shorten a URL without creating an account. Registered users get a p
 
 Redirects record visit information for analytics. Known bot traffic is separated from human visits, and signed-in users can review totals and country distribution. Administrators can disable links that violate the service rules.
 
-The same application serves both the browser interface and a JSON API. Swagger UI documents the API and supports sending requests directly from the browser.
+The same application serves both the browser interface and a JSON API. Swagger UI documents API operations and includes copyable request examples.
 
 ## Features
 
@@ -37,6 +37,13 @@ The same application serves both the browser interface and a JSON API. Swagger U
 - Privacy, terms, acceptable-use, and abuse-reporting pages
 - Request logging, health checks, rate limiting, and CI
 
+## Engineering Highlights
+
+- Visit events are stored separately from short links and indexed for analytics, with a 90-day TTL.
+- The saved-link list is capped at 100 entries per dashboard request. Per-link analytics returns up to 500 recent visits while aggregate counts cover stored events.
+- Rate-limit counters are stored in MongoDB so limits are shared across app instances.
+- CI builds the TypeScript app and runs the integration suite against a fresh MongoDB service for each workflow run.
+
 ## Architecture
 
 ```text
@@ -50,11 +57,11 @@ Express route layer
         |
         v
 Middleware
-  authentication -> validation -> rate limiting -> request logging
+  same-origin checks -> authentication -> request logging
         |
         v
 Controllers
-  link lifecycle -> dashboard queries -> analytics -> moderation
+  rate limiting -> validation -> link lifecycle -> analytics
         |
         v
 Mongoose models
@@ -74,6 +81,10 @@ The main route groups are:
 - Legacy paths such as `/`, `/profile`, `/login`, and `/user/*` for backward compatibility
 
 ## Technical Decisions and Tradeoffs
+
+### TypeScript across the application
+
+Application code, browser scripts, operational scripts, and tests are written in TypeScript. `pnpm dev` runs the server directly with `tsx`; `pnpm build` type-checks and compiles the Node application and browser scripts into `dist/`. The build also copies EJS views and static assets so production runs the compiled output with Node. EJS templates remain `.ejs` files because they are server-rendered templates, not standalone JavaScript modules.
 
 ### Server-rendered UI
 
@@ -103,14 +114,15 @@ Canonical `/ui/*` and `/api/*` routes coexist with older paths. This avoids brea
 
 - **Runtime:** Node.js 24 LTS
 - **Web framework:** Express 5
-- **Views:** EJS and CSS
+- **Language:** TypeScript for server, browser scripts, utilities, and tests
+- **Views:** EJS templates and CSS
 - **Database:** MongoDB with Mongoose
 - **Authentication:** JSON Web Tokens and bcrypt
 - **Security:** Helmet, Content Security Policy, server-side validation, and express-rate-limit
 - **Logging:** Winston with rotating log files plus structured stdout in deployed environments
 - **API documentation:** Swagger UI and OpenAPI annotations
 - **Testing:** Supertest with a MongoDB-backed integration scenario
-- **Tooling:** pnpm, ESLint, Prettier, and Nodemon
+- **Tooling:** pnpm, TypeScript, tsx, ESLint, and Prettier
 - **CI:** GitHub Actions with a MongoDB service container
 
 ## Run Locally
@@ -186,7 +198,7 @@ pnpm db:sync-indexes
 
 ### 4. Start the application
 
-Development mode with automatic restarts:
+Development mode with TypeScript execution and automatic restarts:
 
 ```bash
 pnpm dev
@@ -197,6 +209,8 @@ Normal start:
 ```bash
 pnpm start
 ```
+
+`pnpm start` builds the TypeScript project first, then starts the compiled server from `dist/`.
 
 The terminal prints the address when the server is ready:
 
@@ -216,10 +230,12 @@ Example health check:
 curl http://localhost:3000/api/health
 ```
 
+Example response shape (the timestamp changes with each request):
+
 ```json
 {
     "status": "UP",
-    "timestamp": "2026-05-09T12:00:00.000Z"
+    "timestamp": "2026-10-22T00:00:00.000Z"
 }
 ```
 
@@ -237,21 +253,23 @@ The integration scenario covers signup, login, guest and authenticated link crea
 
 The test clears URL, user, and rate-limit records in `TEST_DB_NAME` before and after execution. Always use a dedicated disposable test database.
 
-GitHub Actions runs lint and the integration scenario for pushes and pull requests targeting `main` or `dev`. Every CI run starts a fresh MongoDB service container and uses a run-specific database.
+GitHub Actions runs lint, strict TypeScript compilation/build, unit checks, and the integration scenario for pushes and pull requests targeting `main` or `dev`. Every CI run starts a fresh MongoDB service container and uses a run-specific database.
 
 ## Useful Commands
 
-```text
-pnpm dev        Start the development server with automatic restarts
-pnpm start      Start the application normally
-pnpm db:check   Verify database connectivity without changing data
-pnpm lint       Check JavaScript and EJS files
-pnpm lint:fix   Apply supported lint fixes
-pnpm format     Format supported source files
-pnpm test:unit  Run database-free reliability checks
-pnpm test:integration Run the MongoDB-backed integration scenario
-pnpm test       Run unit checks followed by the integration scenario
-```
+| Command                       | Purpose                                                       |
+| ----------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                    | Run the TypeScript server with automatic restarts             |
+| `pnpm typecheck`              | Run strict TypeScript checks without emitting files           |
+| `pnpm build`                  | Compile the app and copy EJS/static runtime assets to `dist/` |
+| `pnpm start`                  | Build and start the compiled server                           |
+| `pnpm db:check`               | Verify database connectivity without changing data            |
+| `pnpm db:sync-indexes`        | Apply model indexes to the configured database                |
+| `pnpm lint` / `pnpm lint:fix` | Check or automatically fix supported source files             |
+| `pnpm format`                 | Format the project                                            |
+| `pnpm test:unit`              | Run database-free reliability checks                          |
+| `pnpm test:integration`       | Run the MongoDB-backed integration scenario                   |
+| `pnpm test`                   | Run unit checks followed by the integration scenario          |
 
 ## Project Structure
 
@@ -260,10 +278,11 @@ controller/          Route handlers and application workflows
 docs/screenshots/    README screenshots
 middleware/          Authentication, logging, validation, and rate limiting
 model/               Mongoose schemas and indexes
-public/              Styles, scripts, and image assets
+public/              CSS, browser-side TypeScript, and image assets
 routes/              API, UI, redirect, and compatibility routes
 scripts/             Local utility scripts
-test/                End-to-end integration scenario
+test/                Unit and end-to-end integration scenarios
 util/                Configuration, authentication, logging, and helpers
 views/               EJS templates and shared partials
+dist/                Generated production build (not committed)
 ```

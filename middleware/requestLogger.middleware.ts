@@ -1,6 +1,9 @@
 import { logHttpRequest } from "../util/logger.util.js";
+import type { RequestHandler, Response } from "express";
 
-function normalizeResponseBody(body) {
+type ResponsePayload = { type: string; size?: number; view?: string } | null;
+
+function normalizeResponseBody(body: unknown): ResponsePayload {
     if (body === undefined) {
         return null;
     }
@@ -24,32 +27,36 @@ function normalizeResponseBody(body) {
     };
 }
 
-const requestLogger = (req, res, next) => {
+const requestLogger: RequestHandler = (req, res, next) => {
     const start = Date.now();
-    let responsePayload = null;
+    let responsePayload: ResponsePayload = null;
 
     const originalJson = res.json.bind(res);
     const originalSend = res.send.bind(res);
     const originalRender = res.render.bind(res);
 
-    res.json = (body) => {
+    res.json = ((body: unknown) => {
         responsePayload = normalizeResponseBody(body);
         return originalJson(body);
-    };
+    }) as Response["json"];
 
-    res.send = (body) => {
+    res.send = ((body: unknown) => {
         responsePayload = normalizeResponseBody(body);
         return originalSend(body);
-    };
+    }) as Response["send"];
 
-    res.render = (view, locals, callback) => {
+    res.render = ((
+        view: string,
+        locals?: object,
+        callback?: (err: Error | null, html?: string) => void
+    ) => {
         responsePayload = {
             type: "view",
             view: typeof view === "string" ? view : "unknown"
         };
 
         return originalRender(view, locals, callback);
-    };
+    }) as Response["render"];
 
     res.on("finish", () => {
         const duration = Date.now() - start;

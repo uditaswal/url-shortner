@@ -1,6 +1,26 @@
 import mongoose from "mongoose";
 
-const urlSchema = new mongoose.Schema(
+export interface LegacyVisit {
+    timestamp: number;
+    country: string;
+    isBot: boolean;
+    userAgent?: string | null;
+}
+
+export interface UrlFields {
+    shortId: string;
+    redirectUrl: string;
+    expiresAt: Date | null;
+    isDisabled: boolean;
+    disabledReason: string | null;
+    lastEditedAt: Date | null;
+    visitHistory: LegacyVisit[];
+    createdBy?: mongoose.Types.ObjectId;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+const urlSchema = new mongoose.Schema<UrlFields>(
     {
         shortId: {
             type: String,
@@ -62,6 +82,6 @@ urlSchema.index(
     }
 );
 
-const URL = mongoose.model("url", urlSchema);
+const URL = mongoose.model<UrlFields>("url", urlSchema);
 
 export default URL;

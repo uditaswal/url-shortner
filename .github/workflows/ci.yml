@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
     quality:
-        name: Lint and integration tests
+        name: Lint, build, and integration tests
         runs-on: ubuntu-latest
         timeout-minutes: 10
 
@@ -46,7 +46,7 @@ jobs:
             - name: Set up pnpm
               uses: pnpm/action-setup@v5
               with:
-                  version: 10
+                  version: 10.34.7
                   run_install: false
 
             - name: Set up Node.js
@@ -60,6 +60,9 @@ jobs:
 
             - name: Run lint
               run: pnpm lint
+
+            - name: Typecheck and build
+              run: pnpm build
 
             - name: Run MongoDB integration tests
               run: pnpm test

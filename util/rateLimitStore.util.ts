@@ -1,21 +1,30 @@
 import RateLimitEntry from "../model/rateLimitEntry.models.js";
+import type { Options, Store } from "express-rate-limit";
 
-export default class MongoRateLimitStore {
+function isDuplicateKeyError(error: unknown): error is { code: number } {
+    return typeof error === "object" && error !== null && "code" in error && error.code === 11000;
+}
+
+export default class MongoRateLimitStore implements Store {
+    prefix: string;
+    now: () => Date;
+    windowMs: number;
+
     constructor(prefix = "rate-limit", now = () => new Date()) {
         this.prefix = prefix;
         this.now = now;
         this.windowMs = 60 * 1000;
     }
 
-    init(options) {
+    init(options: Pick<Options, "windowMs">): void {
         this.windowMs = options.windowMs;
     }
 
-    buildKey(key) {
+    buildKey(key: string): string {
         return `${this.prefix}:${key}`;
     }
 
-    async get(key) {
+    async get(key: string) {
         const entry = await RateLimitEntry.findOne({ key: this.buildKey(key) }).lean();
         if (!entry) {
             return undefined;
@@ -27,7 +36,7 @@ export default class MongoRateLimitStore {
         };
     }
 
-    async increment(key) {
+    async increment(key: string) {
         const scopedKey = this.buildKey(key);
         const now = this.now();
         const nextResetTime = new Date(now.getTime() + this.windowMs);
@@ -56,12 +65,14 @@ export default class MongoRateLimitStore {
                 returnDocument: "after"
             });
         } catch (error) {
-            if (error?.code !== 11000) throw error;
+            if (!isDuplicateKeyError(error)) throw error;
             entry = await RateLimitEntry.findOneAndUpdate({ key: scopedKey }, update, {
                 updatePipeline: true,
                 returnDocument: "after"
             });
         }
+
+        if (!entry) throw new Error("Unable to increment rate-limit counter.");
 
         return {
             totalHits: entry.totalHits,
@@ -69,18 +80,18 @@ export default class MongoRateLimitStore {
         };
     }
 
-    async decrement(key) {
+    async decrement(key: string): Promise<void> {
         await RateLimitEntry.findOneAndUpdate(
             { key: this.buildKey(key), totalHits: { $gt: 0 } },
             { $inc: { totalHits: -1 } }
         );
     }
 
-    async resetKey(key) {
+    async resetKey(key: string): Promise<void> {
         await RateLimitEntry.deleteOne({ key: this.buildKey(key) });
     }
 
-    async resetAll() {
+    async resetAll(): Promise<void> {
         await RateLimitEntry.deleteMany({
             key: { $regex: `^${this.prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:` }
         });

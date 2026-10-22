@@ -6,7 +6,7 @@ const appEnv = process.env.APP_ENV || process.env.NODE_ENV || "test";
 const isProduction = appEnv === "production";
 const envPrefix = isProduction ? "PROD" : "TEST";
 
-function getRequiredEnv(key) {
+function getRequiredEnv(key: string): string {
     const value = process.env[key];
     if (!value) {
         throw new Error(`Missing required environment variable: ${key}`);
