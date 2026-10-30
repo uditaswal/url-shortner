@@ -2,7 +2,7 @@
 
 A full-stack URL shortener built with TypeScript, Node.js, Express, MongoDB, and server-rendered EJS. It supports guest links, account-based link management, expiration, click analytics, admin moderation, and a documented JSON API.
 
-[Live demo](https://url-shortner-ugkr.onrender.com/) · [Source code](https://github.com/uditaswal/url-shortner) · [Run locally](#run-locally) · [API documentation](#api-documentation)
+[Live demo](https://url-shortner-ugkr.onrender.com/) · [Run locally](#run-locally) · [API documentation](#api-documentation)
 
 ## Screenshots
 
